@@ -151,7 +151,7 @@ int TagFolder_check_db_structure(TagFolder *self)
     
     if (rc != SQLITE_ROW)
     {
-        char *create_req = "create table tag (id int, name varchar);", *errmsg;
+        char *create_req = "create table tag (id INTEGER PRIMARY KEY, name varchar);", *errmsg;
         rc = sqlite3_exec(self->db, create_req, NULL, NULL, &errmsg);
         if( rc )
         {   
@@ -177,7 +177,7 @@ int TagFolder_check_db_structure(TagFolder *self)
     
     if (rc != SQLITE_ROW)
     {
-        char *create_req = "create table file (id int, name varchar);", *errmsg;
+        char *create_req = "create table file (id INTEGER PRIMARY KEY, name varchar);", *errmsg;
         rc = sqlite3_exec(self->db, create_req, NULL, NULL, &errmsg);
         if( rc )
         {   
@@ -272,6 +272,85 @@ Tag *TagFolder_list_tags(TagFolder *self)
         ret = new_tag;
     }
     while(rc == SQLITE_ROW);
+    sqlite3_finalize(res);
 
+    return ret;
+}
+
+int TagFolder_create_tag(TagFolder *self, const char *name)
+{
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[50], *errmsg;
+    int rc;
+    TagFolder_begin_transaction(self);
+    snprintf(req, 49, "select id from tag where name = '%s';", name);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't verif if tag %s already exist: %s\n", name, sqlite3_errmsg(self->db));
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc == SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s already exist\n", name);
+        TagFolder_rollback_transaction(self);
+        return 0;
+    }
+
+    snprintf(req, 49, "insert into tag (name) values ('%s');", name);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {   
+        fprintf(stderr, "Can't add tag %s : %s\n", name, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    TagFolder_commit_transaction(self);
+    sqlite3_finalize(res);
+    return ret;
+}
+
+int TagFolder_create_file_in_db(TagFolder *self, const char *name)
+{
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[50], *errmsg;
+    int rc;
+    TagFolder_begin_transaction(self);
+    snprintf(req, 49, "select id from file where name = '%s';", name);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't verif if file %s already exist in db: %s\n", name, sqlite3_errmsg(self->db));
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc == SQLITE_ROW)
+    {
+        fprintf(stderr, "File %s already exist in db\n", name);
+        TagFolder_rollback_transaction(self);
+        return 0;
+    }
+
+    snprintf(req, 49, "insert into file (name) values ('%s');", name);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {   
+        fprintf(stderr, "Can't add file %s in db : %s\n", name, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    TagFolder_commit_transaction(self);
+    sqlite3_finalize(res);
     return ret;
 }
