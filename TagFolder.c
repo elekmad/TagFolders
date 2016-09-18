@@ -23,13 +23,14 @@ Tag *Tag_set_next(Tag *self, Tag *next)
 {
     Tag *ret = self->next;
     self->next = next;
+    return ret;
 }
 
 void Tag_finalize(Tag *self)
 {
     Tag *ret = Tag_set_next(self, NULL);
     if(ret != NULL)
-        Tag_finalize(ret);
+        Tag_free(ret);
 }
 
 void Tag_free(Tag *self)
@@ -52,9 +53,17 @@ static int TagFolder_set_db(TagFolder *self, sqlite3 *db)
     self->db = db;
 }
 
+static void TagFolder_set_current(TagFolder *self, Tag *cur)
+{
+    Tag_set_next(cur, self->current);
+    self->current = cur;
+}
+
 void TagFolder_finalize(TagFolder *self)
 {
     TagFolder_set_db(self, NULL);
+    if(self->current != NULL)
+        Tag_free(self->current);
 }
 
 int TagFolder_check_db_structure(TagFolder *);
@@ -405,6 +414,34 @@ int TagFolder_tag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag
     tag_id = sqlite3_column_int(res, 0);
     sqlite3_finalize(res);
 
+//Verif if file is already tagued
+    snprintf(req, 499, "select count(primid) from tagtag where primid = %d and secondid = %d", tag_id, tag_to_tag_id);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get count : %s\n", sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Can't get count\n");
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    rc = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+
+    if(rc > 0)
+    {
+        fprintf(stderr, "Tag %s already tagued by %s\n", tag_to_tag, tag);
+        TagFolder_rollback_transaction(self);
+        return 0 ;
+    }
+
 
     snprintf(req, 499, "insert into tagtag (primid, secondid) values (%d, %d);", tag_id, tag_to_tag_id);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
@@ -418,7 +455,6 @@ int TagFolder_tag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag
     }
     TagFolder_commit_transaction(self);
     return ret;
-
 }
 
 int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *tag)
@@ -434,7 +470,7 @@ int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *t
  
     if( rc )
     {
-        fprintf(stderr, "Can't get tag %s's id : %s\n", file_to_tag, sqlite3_errmsg(self->db));
+        fprintf(stderr, "Can't get File %s's id : %s\n", file_to_tag, sqlite3_errmsg(self->db));
         TagFolder_rollback_transaction(self);
         return -1 ;
     }
@@ -469,6 +505,33 @@ int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *t
     tag_id = sqlite3_column_int(res, 0);
     sqlite3_finalize(res);
 
+//Verif if file is already tagued
+    snprintf(req, 499, "select count(tagid) from tagfile where tagid = %d and fileid = %d", tag_id, file_to_tag_id);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get count : %s\n", sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Can't get count\n");
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    rc = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+
+    if(rc > 0)
+    {
+        fprintf(stderr, "File %s already tagued by %s\n", file_to_tag, tag);
+        TagFolder_rollback_transaction(self);
+        return 0 ;
+    }
 
     snprintf(req, 499, "insert into tagfile (tagid, fileid) values (%d, %d);", tag_id, file_to_tag_id);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
@@ -482,5 +545,122 @@ int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *t
     }
     TagFolder_commit_transaction(self);
     return ret;
+}
 
+int TagFolder_get_tag(TagFolder *self, const char *tag)
+{
+    Tag *cur_tag;
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[500], *errmsg;
+    int rc, tag_id;
+//Take "file to tag"'s id
+    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get tag %s's id : %s\n", tag, sqlite3_errmsg(self->db));
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s do not exist in db\n", tag);
+        return -1;
+    }
+    tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+    cur_tag = self->current;
+    while(cur_tag != NULL && cur_tag->id != tag_id)
+        cur_tag = cur_tag->next;
+
+    if(cur_tag == NULL)//We don't already have get this tag
+    {
+        cur_tag = Tag_new(tag, tag_id);
+        TagFolder_set_current(self, cur_tag);
+    }
+    return ret;
+}
+
+int TagFolder_release_tag(TagFolder *self, const char *tag)
+{
+    Tag *cur_tag, *old_tag;
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[500], *errmsg;
+    int rc, tag_id;
+//Take "file to tag"'s id
+    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get tag %s's id : %s\n", tag, sqlite3_errmsg(self->db));
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s do not exist in db\n", tag);
+        return -1;
+    }
+    tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+    cur_tag = self->current;
+    old_tag = NULL;
+    while(cur_tag != NULL && cur_tag->id != tag_id)
+    {
+        old_tag = cur_tag;
+        cur_tag = cur_tag->next;
+    }
+
+    if(cur_tag != NULL)//Tag to release found
+    {
+        if(old_tag != NULL)
+            Tag_set_next(old_tag, cur_tag->next);
+        else
+            TagFolder_set_current(self, NULL);
+        Tag_set_next(cur_tag, NULL);
+        Tag_free(cur_tag);
+    }
+    return ret;
+}
+
+int TagFolder_list_current_files(TagFolder *self)
+{
+    Tag *cur_tag;
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[50000], *ptr, *errmsg;
+    int rc, tag_id;
+    cur_tag = self->current;
+    if(cur_tag != NULL)
+    {
+        ptr = req + sprintf(req, "select %s.name from (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = \"%s\") as %s", cur_tag->name, cur_tag->name, cur_tag->name);
+        while(cur_tag != NULL)
+        {
+            cur_tag = cur_tag->next;
+            if(cur_tag == NULL)
+                break;
+            ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = \"%s\") as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, self->current->name);
+        }
+    }
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get file list : %s\n", sqlite3_errmsg(self->db));
+        return -1 ;
+    }
+ 
+    rc = sqlite3_step(res);
+    while(rc == SQLITE_ROW)
+    {
+        printf("File : %s\n", sqlite3_column_text(res, 0));
+	rc = sqlite3_step(res);
+    }
+    sqlite3_finalize(res);
 }
