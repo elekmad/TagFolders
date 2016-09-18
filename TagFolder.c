@@ -457,6 +457,68 @@ int TagFolder_tag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag
     return ret;
 }
 
+int TagFolder_untag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag)
+{
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[500], *errmsg;
+    int rc, tag_to_tag_id, tag_id;
+    TagFolder_begin_transaction(self);
+//Take "tag to tag"'s id
+    snprintf(req, 499, "select id from tag where name = '%s';", tag_to_tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get tag %s's id : %s\n", tag_to_tag, sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s do not exist in db\n", tag_to_tag);
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    tag_to_tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+//Take "tag"'s id
+    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get tag %s's id : %s\n", tag, sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s do not exist in db\n", tag);
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+
+    snprintf(req, 499, "delete from tagtag where primid = %d and secondid = %d;", tag_id, tag_to_tag_id);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {   
+        fprintf(stderr, "Can't untag %s from %s in db : %s\n", tag, tag_to_tag, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    TagFolder_commit_transaction(self);
+    return ret;
+}
+
 int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *tag)
 {
     int ret = 0;
@@ -538,6 +600,68 @@ int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *t
     if( rc )
     {   
         fprintf(stderr, "Can't tag %s with %s in db : %s\n", file_to_tag, tag, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    TagFolder_commit_transaction(self);
+    return ret;
+}
+
+int TagFolder_untag_a_file(TagFolder *self, const char *file_to_tag, const char *tag)
+{
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[500], *errmsg;
+    int rc, file_to_tag_id, tag_id;
+    TagFolder_begin_transaction(self);
+//Take "file to tag"'s id
+    snprintf(req, 499, "select id from file where name = '%s';", file_to_tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get File %s's id : %s\n", file_to_tag, sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "File %s do not exist in db\n", file_to_tag);
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    file_to_tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+//Take "tag"'s id
+    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get tag %s's id : %s\n", tag, sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s do not exist in db\n", tag);
+        TagFolder_rollback_transaction(self);
+        return -1;
+    }
+    tag_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+
+    snprintf(req, 499, "delete from tagfile where tagid = %d and fileid = %d;", tag_id, file_to_tag_id);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {   
+        fprintf(stderr, "Can't untag %s from %s in db : %s\n", tag, file_to_tag, errmsg);
         sqlite3_free(errmsg);
         sqlite3_finalize(res);
         TagFolder_rollback_transaction(self);
