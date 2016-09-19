@@ -31,22 +31,88 @@ int main(int argc, char **argv)
     }
     printf("dupont\n");
     TagFolder_get_tag(&folder, "dupont");
-    TagFolder_list_current_files(&folder);
+    File *files, *cur_file;
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
     printf("dupont factures\n");
     TagFolder_get_tag(&folder, "factures");
-    TagFolder_list_current_files(&folder);
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
+ 
     printf("dupont factures specs\n");
     TagFolder_get_tag(&folder, "specs");
-    TagFolder_list_current_files(&folder);
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
+ 
     printf("dupont factures specs 'before untagued'\n");
     TagFolder_tag_a_file(&folder, "novembre", "specs");
-    TagFolder_list_current_files(&folder);
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
+
     printf("dupont factures specs 'before untagued'\n");
     TagFolder_untag_a_file(&folder, "novembre", "specs");
-    TagFolder_list_current_files(&folder);
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
+
     TagFolder_release_tag(&folder, "factures");
     printf("dupont specs\n");
-    TagFolder_list_current_files(&folder);
+    files = TagFolder_list_current_files(&folder);
+    if(files != NULL)
+    {
+        cur_file = files;
+        while(cur_file != NULL)
+        {
+            printf("File : %s %d\n", cur_file->name, cur_file->id);
+            cur_file = cur_file->next;
+        }
+        File_free(files);
+    }
+
     TagFolder_finalize(&folder);
     exit(EXIT_SUCCESS);
 }
