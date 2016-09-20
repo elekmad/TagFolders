@@ -818,7 +818,6 @@ File *TagFolder_list_current_files(TagFolder *self)
     sqlite3_stmt *res;
     char req[50000], *ptr, *errmsg;
     int rc, tag_id;
-    req[0] = '\0';
     cur_tag = self->current;
     if(cur_tag != NULL)
     {
@@ -831,6 +830,8 @@ File *TagFolder_list_current_files(TagFolder *self)
             ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = \"%s\") as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, self->current->name);
         }
     }
+    else
+        strcpy(req, "select name, id from file");
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
  
     if( rc )
