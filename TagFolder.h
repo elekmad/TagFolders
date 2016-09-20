@@ -52,6 +52,7 @@ int TagFolder_untag_a_tag(TagFolder *self, const char *tag_to_tag, const char *t
 int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *tag);
 int TagFolder_untag_a_file(TagFolder *self, const char *file_to_tag, const char *tag);
 int TagFolder_select_tag(TagFolder *self, const char *tag);
+Tag *TagFolder_get_selected_tags(TagFolder *self);
 int TagFolder_unselect_tag(TagFolder *self, const char *tag);
 File *TagFolder_list_current_files(TagFolder *self);
 int TagFolder_delete_tag(TagFolder *self, const char *tag);

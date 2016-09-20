@@ -759,6 +759,12 @@ int TagFolder_select_tag(TagFolder *self, const char *tag)
     return ret;
 }
 
+//Do not free them !
+Tag *TagFolder_get_selected_tags(TagFolder *self)
+{
+   return self->current;
+}
+
 int TagFolder_unselect_tag(TagFolder *self, const char *tag)
 {
     Tag *cur_tag, *old_tag;
