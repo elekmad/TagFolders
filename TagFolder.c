@@ -100,7 +100,8 @@ static int TagFolder_set_db(TagFolder *self, sqlite3 *db)
 
 static void TagFolder_set_current(TagFolder *self, Tag *cur)
 {
-    Tag_set_next(cur, self->current);
+    if(cur != NULL)
+        Tag_set_next(cur, self->current);
     self->current = cur;
 }
 
@@ -817,6 +818,7 @@ File *TagFolder_list_current_files(TagFolder *self)
     sqlite3_stmt *res;
     char req[50000], *ptr, *errmsg;
     int rc, tag_id;
+    req[0] = '\0';
     cur_tag = self->current;
     if(cur_tag != NULL)
     {
