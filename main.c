@@ -30,7 +30,7 @@ int main(int argc, char **argv)
         cur = cur->next;
     }
     printf("dupont\n");
-    TagFolder_get_tag(&folder, "dupont");
+    TagFolder_select_tag(&folder, "dupont");
     File *files, *cur_file;
     files = TagFolder_list_current_files(&folder);
     if(files != NULL)
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
         File_free(files);
     }
     printf("dupont factures\n");
-    TagFolder_get_tag(&folder, "factures");
+    TagFolder_select_tag(&folder, "factures");
     files = TagFolder_list_current_files(&folder);
     if(files != NULL)
     {
@@ -58,7 +58,7 @@ int main(int argc, char **argv)
     }
  
     printf("dupont factures specs\n");
-    TagFolder_get_tag(&folder, "specs");
+    TagFolder_select_tag(&folder, "specs");
     files = TagFolder_list_current_files(&folder);
     if(files != NULL)
     {
@@ -99,7 +99,7 @@ int main(int argc, char **argv)
         File_free(files);
     }
 
-    TagFolder_release_tag(&folder, "factures");
+    TagFolder_unselect_tag(&folder, "factures");
     printf("dupont specs\n");
     files = TagFolder_list_current_files(&folder);
     if(files != NULL)
