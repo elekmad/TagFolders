@@ -2,6 +2,43 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <openssl/md5.h>
+#include <sys/time.h>
+
+static void TagFolder_generate_filename(const char *str, char *out)
+{
+    int n, length;
+    MD5_CTX c;
+    unsigned char digest[16];
+    unsigned char time_of_day[(sizeof(time_t) + sizeof(suseconds_t)) * 2];
+    struct timeval tv;
+
+    MD5_Init(&c);
+
+    length = strlen(str);
+    while (length > 0)
+    {
+        if (length > 512)
+        {
+            MD5_Update(&c, str, 512);
+        }
+        else
+        {
+            MD5_Update(&c, str, length);
+        }
+        length -= 512;
+        str += 512;
+    }
+    gettimeofday(&tv, NULL);
+    MD5_Update(&c, &tv, sizeof(tv));
+
+    MD5_Final(digest, &c);
+
+    for (n = 0; n < 16; ++n)
+    {
+        snprintf(&(out[n*2]), 16*2, "%02x", (unsigned int)digest[n]);
+    }
+}
 
 void Tag_init(Tag *self, const char *name, int id)
 {
@@ -238,7 +275,7 @@ int TagFolder_check_db_structure(TagFolder *self)
     
     if (rc != SQLITE_ROW)
     {
-        char *create_req = "create table file (id INTEGER PRIMARY KEY, name varchar);", *errmsg;
+        char *create_req = "create table file (id INTEGER PRIMARY KEY, name varchar, filename char(32));", *errmsg;
         rc = sqlite3_exec(self->db, create_req, NULL, NULL, &errmsg);
         if( rc )
         {   
@@ -384,26 +421,12 @@ int TagFolder_create_file_in_db(TagFolder *self, const char *name)
     sqlite3_stmt *res;
     char req[50], *errmsg;
     int rc;
-    TagFolder_begin_transaction(self);
-    snprintf(req, 499, "select id from file where name = '%s';", name);
-    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
- 
-    if( rc )
-    {
-        fprintf(stderr, "Can't verif if file %s already exist in db: %s\n", name, sqlite3_errmsg(self->db));
-        TagFolder_rollback_transaction(self);
-        return -1 ;
-    }
-    rc = sqlite3_step(res);
- 
-    if(rc == SQLITE_ROW)
-    {
-        fprintf(stderr, "File %s already exist in db\n", name);
-        TagFolder_rollback_transaction(self);
-        return 0;
-    }
+    char db_name[33];
+//We allow multiple files to be with the same name, generating uniq filename for each.
+    TagFolder_generate_filename(name, db_name);
 
-    snprintf(req, 499, "insert into file (name) values ('%s');", name);
+    TagFolder_begin_transaction(self);
+    snprintf(req, 499, "insert into file (name, filename) values ('%s', '%s');", name, db_name);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
     if( rc )
     {   

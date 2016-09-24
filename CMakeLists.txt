@@ -12,8 +12,14 @@ target_link_libraries(TagFolders TagFolder)
 #Déclaration de l'exécutable
 
 target_link_libraries (TagFolders "-lsqlite3")
-include_directories("/usr/include/readline")
-target_link_libraries (TagFolders "/usr/lib/x86_64-linux-gnu/libhistory.a" "/usr/lib/x86_64-linux-gnu/libreadline.a")
+include_directories("-I/usr/include/readline")
+target_link_libraries (TagFolders "-L/usr/local/lib -lreadline")
+
+find_package(OpenSSL)
+if(OPENSSL_FOUND)
+    include_directories(${OPENSSL_INCLUDE_DIR})
+    target_link_libraries (TagFolders ${OPENSSL_LIBRARIES})
+endif (OPENSSL_FOUND)
 
 if( WITH_COREDEBUG )
   add_definitions(-ggdb3)
