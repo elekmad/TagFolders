@@ -19,9 +19,9 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     GetExistingTagName.h
 
-INCLUDEPATH += ../../TagFolders/
+INCLUDEPATH += ../
 
-LIBS += -L../../TagFolders/ -lTagFolder -lsqlite3 -lssl -lcrypto
+LIBS += -L../ -lTagFolder -lsqlite3 -lssl -lcrypto
 
 FORMS    += mainwindow.ui
 
