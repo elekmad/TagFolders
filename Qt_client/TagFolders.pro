@@ -13,11 +13,9 @@ TEMPLATE = app
 
 
 SOURCES += main.cpp\
-        mainwindow.cpp \
-    GetExistingTagName.cpp
+        mainwindow.cpp
 
-HEADERS  += mainwindow.h \
-    GetExistingTagName.h
+HEADERS  += mainwindow.h
 
 INCLUDEPATH += ../
 

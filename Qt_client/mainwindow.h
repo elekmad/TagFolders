@@ -33,14 +33,11 @@ public:
 private slots:
 
     void on_FileList_customContextMenuRequested(const QPoint &pos);
-    void add_tag_to_file_window();
-    void del_tag_from_file_window();
     void do_operation_on_file_window(bool);
 
 public slots:
     void on_checkBox_clicked(bool checked);
     void do_operation_on_file();
-    void set_tag_name(const QString&);
 
 private:
     Ui::MainWindow *ui;

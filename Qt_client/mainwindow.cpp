@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "GetExistingTagName.h"
 #include <qwidget.h>
 #include <qlayout.h>
 #include <qlogging.h>
@@ -100,27 +99,30 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
 {
     QListView *filelist = this->findChild<QListView*>("FileList");
     QMenu *menu = new QMenu(qobject_cast<QWidget*>(filelist));
-    QAction *action;
-    action = menu->addAction("Ajouter un tag");
-    connect(action, SIGNAL(triggered()), this, SLOT(add_tag_to_file_window()));
-    connect(action, SIGNAL(triggered()), menu, SLOT(close()));
-    filelist->selectionModel()->selectedIndexes();
     QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
-    qInfo() << file_selected;
-    action = menu->addAction("Retirer un tag");
-    connect(action, SIGNAL(triggered()), this, SLOT(del_tag_from_file_window()));
-    connect(action, SIGNAL(triggered()), menu, SLOT(close()));
+    QAction *action;
+    QMap<QString, Tag*> File_Tags;
+    Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_selected.toLocal8Bit().data()), *ptr;
+
+    operation = new FileOperation;
+    operation->file_name = file_selected;
+    ptr = file_tags;
+    while(ptr != NULL)
+    {
+        File_Tags[tr(ptr->name)] = ptr;
+        ptr = Tag_get_next(ptr);
+    }
+    ptr = all_tags;
+    while(ptr != NULL)
+    {
+        action = menu->addAction(tr(ptr->name));
+        action->setCheckable(true);
+        connect(action, SIGNAL(toggled(bool)), this, SLOT(do_operation_on_file_window(bool)));
+        if(File_Tags[tr(ptr->name)] != NULL)
+            action->setChecked(true);
+        ptr = Tag_get_next(ptr);
+    }
     menu->exec(pos + filelist->pos() + this->pos());
-}
-
-void MainWindow::add_tag_to_file_window()
-{
-    do_operation_on_file_window(true);
-}
-
-void MainWindow::del_tag_from_file_window()
-{
-    do_operation_on_file_window(false);
 }
 
 void MainWindow::do_operation_on_file_window(bool add_or_del)
@@ -132,23 +134,10 @@ void MainWindow::do_operation_on_file_window(bool add_or_del)
         qInfo() << "Ajouter un tag à : " << file_selected;
     else
         qInfo() << "Retirer un tag de : " << file_selected;
-    operation = new FileOperation;
-    operation->file_name = file_selected;
+
     operation->add_or_del = add_or_del;
-    Tag *tags;
-    if(add_or_del)
-        tags = TagFolder_list_tags(&folder);
-    else
-        tags = TagFolder_get_tags_tagging_specific_file(&folder, file_selected.toLocal8Bit().data());
-    GetExistingTagName Dialog(this, tags);
-    Dialog.exec();
-}
-
-
-void MainWindow::set_tag_name(const QString &name)
-{
-    operation->tag_name = name;
-    qInfo() << "Tag name for operation : " << name;
+    operation->tag_name = qobject_cast<QAction*>(sender())->text();
+    do_operation_on_file();
 }
 
 void MainWindow::do_operation_on_file()
