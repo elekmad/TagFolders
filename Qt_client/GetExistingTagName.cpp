@@ -65,11 +65,12 @@ GetExistingTagName::GetExistingTagName(QWidget *parent, Tag *tags)
     {
         QString first_tag_name(ptr->name);
         (qobject_cast<MainWindow*>(parent))->set_tag_name(first_tag_name);
-    }
-    while(ptr != NULL)
-    {
-        liste->addItem(tr(ptr->name));
-        ptr = ptr->next;
+        while(ptr != NULL)
+        {
+            liste->addItem(tr(ptr->name));
+            ptr = Tag_get_next(ptr);
+        }
+        Tag_free(tags);
     }
 
     connect(liste, SIGNAL(currentIndexChanged(QString)), parent, SLOT(set_tag_name(QString)));

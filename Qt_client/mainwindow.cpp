@@ -14,7 +14,6 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     file_model = NULL;
-    tags = NULL;
     ui->setupUi(this);
     TagFolder_init(&folder);
     QString path("/home/damien/dev/TagFolders/test");
@@ -29,8 +28,6 @@ MainWindow::~MainWindow()
     TagFolder_finalize(&folder);
     if(file_model != NULL)
         delete file_model;
-    if(tags != NULL)
-        Tag_free(tags);
 }
 
 void MainWindow::reload_file_list(void)
@@ -45,7 +42,7 @@ void MainWindow::reload_file_list(void)
         while(ptr != NULL)
         {
             list << ptr->name;
-            ptr = ptr->next;
+            ptr = File_get_next(ptr);
         }
         m->setStringList(list);
 
@@ -78,16 +75,13 @@ void MainWindow::reload_tags_list(void)
             TagsListLayout->addWidget(checkBox);
             connect(checkBox, SIGNAL(clicked(bool)), this, SLOT(on_checkBox_clicked(bool)));
 
-            ptr = ptr->next;
+            ptr = Tag_get_next(ptr);
         }
         TagsList->setLayout(TagsListLayout);
 
         ui->retranslateUi(this);
         QMetaObject::connectSlotsByName(this);
     }
-    if(tags != NULL)
-        Tag_free(tags);
-    tags=ltags;
 }
 
 void MainWindow::on_checkBox_clicked(bool checked)
@@ -141,6 +135,11 @@ void MainWindow::do_operation_on_file_window(bool add_or_del)
     operation = new FileOperation;
     operation->file_name = file_selected;
     operation->add_or_del = add_or_del;
+    Tag *tags;
+    if(add_or_del)
+        tags = TagFolder_list_tags(&folder);
+    else
+        tags = TagFolder_get_tags_tagging_specific_file(&folder, file_selected.toLocal8Bit().data());
     GetExistingTagName Dialog(this, tags);
     Dialog.exec();
 }

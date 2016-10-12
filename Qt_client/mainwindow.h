@@ -46,7 +46,6 @@ private:
     Ui::MainWindow *ui;
     QStringListModel *file_model;
     TagFolder folder;
-    Tag *tags;
     FileOperation *operation;
 };
 
