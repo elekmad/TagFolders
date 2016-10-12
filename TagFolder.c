@@ -63,6 +63,11 @@ Tag *Tag_set_next(Tag *self, Tag *next)
     return ret;
 }
 
+Tag *Tag_get_next(Tag *self)
+{
+    return self->next;
+}
+
 void Tag_finalize(Tag *self)
 {
     Tag *ret = Tag_set_next(self, NULL);
@@ -97,6 +102,11 @@ File *File_set_next(File *self, File *next)
     File *ret = self->next;
     self->next = next;
     return ret;
+}
+
+File *File_get_next(File *self)
+{
+    return self->next;
 }
 
 void File_finalize(File *self)
@@ -794,7 +804,7 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
     Tag *cur_tag, *old_tag;
     int ret = 0;
     sqlite3_stmt *res;
-    char req[500], *errmsg;
+    char req[500];
     int rc, tag_id;
 //Take "file to tag"'s id
     snprintf(req, 499, "select id from tag where name = '%s';", tag);
@@ -831,6 +841,52 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
         Tag_set_next(cur_tag, NULL);
         Tag_free(cur_tag);
     }
+    return ret;
+}
+
+Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const char *file)
+{
+    Tag *ret = NULL;
+    sqlite3_stmt *res;
+    char req[500];
+    int rc, file_id;
+    snprintf(req, 499, "SELECT id FROM file WHERE name = '%s';", file);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+    if( rc )
+    {
+        fprintf(stderr, "Can't get file %s's id : %s\n", file, sqlite3_errmsg(self->db));
+        return ret ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc != SQLITE_ROW)
+    {
+        fprintf(stderr, "File %s do not exist in db\n", file);
+        return ret;
+    }
+    file_id = sqlite3_column_int(res, 0);
+    sqlite3_finalize(res);
+ 
+    snprintf(req, 499, "SELECT name, id FROM tag inner join tagfile on tag.id = tagfile.tagid WHERE fileid = '%d';", file_id);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+    if( rc )
+    {
+        fprintf(stderr, "Can't list tags for file %s : %s\n", file, sqlite3_errmsg(self->db));
+        return ret;
+    }
+    do
+    {
+        Tag *new_tag;
+        rc = sqlite3_step(res);
+        if(rc != SQLITE_ROW)
+            break;
+        new_tag = Tag_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1));
+        Tag_set_next(new_tag, ret);
+        ret = new_tag;
+    }
+    while(rc == SQLITE_ROW);
+    sqlite3_finalize(res);
+
     return ret;
 }
 
