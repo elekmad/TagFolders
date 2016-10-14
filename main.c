@@ -26,7 +26,7 @@ int main(int argc, char **argv)
             char *tag = line + strlen("create_tag");
             while(*tag == ' ')
                 tag++;
-            TagFolder_create_tag(&folder, tag);
+            TagFolder_create_tag(&folder, tag, TagTypeInclude);
         }
         else if(strncasecmp(line, "select_tag", strlen("select_tag")) == 0)
         {

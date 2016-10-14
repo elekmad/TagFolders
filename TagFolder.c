@@ -40,19 +40,20 @@ static void TagFolder_generate_filename(const char *str, char *out)
     }
 }
 
-void Tag_init(Tag *self, const char *name, int id)
+void Tag_init(Tag *self, const char *name, int id, TagType type)
 {
     strncpy(self->name, name, 19);
     self->name[20] = '\0';//Protection because strncpy might skip  the null terminating byte...
     self->id = id;
     self->next = NULL;
+    self->type = type;
 }
 
-Tag *Tag_new(const char *name, int id)
+Tag *Tag_new(const char *name, int id, TagType type)
 {
     Tag *new_tag = malloc(sizeof(Tag));
     if(new_tag != NULL)
-        Tag_init(new_tag, name, id);
+        Tag_init(new_tag, name, id, type);
     return new_tag;
 }
 
@@ -66,6 +67,16 @@ Tag *Tag_set_next(Tag *self, Tag *next)
 Tag *Tag_get_next(Tag *self)
 {
     return self->next;
+}
+
+void Tag_set_type(Tag *self, TagType type)
+{
+    self->type = type;
+}
+
+TagType Tag_get_type(Tag *self)
+{
+    return self->type;
 }
 
 void Tag_finalize(Tag *self)
@@ -126,7 +137,8 @@ void File_free(File *self)
 void TagFolder_init(TagFolder *self)
 {
     self->folder[0] = '\0';
-    self->current = NULL;
+    self->current_includes = NULL;
+    self->current_excludes = NULL;
     self->db = NULL;
 }
 
@@ -145,18 +157,27 @@ static int TagFolder_set_db(TagFolder *self, sqlite3 *db)
     self->db = db;
 }
 
-static void TagFolder_set_current(TagFolder *self, Tag *cur)
+static void TagFolder_set_current_include(TagFolder *self, Tag *cur)
 {
     if(cur != NULL)
-        Tag_set_next(cur, self->current);
-    self->current = cur;
+        Tag_set_next(cur, self->current_includes);
+    self->current_includes = cur;
+}
+
+static void TagFolder_set_current_exclude(TagFolder *self, Tag *cur)
+{
+    if(cur != NULL)
+        Tag_set_next(cur, self->current_excludes);
+    self->current_excludes = cur;
 }
 
 void TagFolder_finalize(TagFolder *self)
 {
     TagFolder_set_db(self, NULL);
-    if(self->current != NULL)
-        Tag_free(self->current);
+    if(self->current_includes != NULL)
+        Tag_free(self->current_includes);
+    if(self->current_excludes != NULL)
+        Tag_free(self->current_excludes);
 }
 
 void TagFolder_free(TagFolder *self)
@@ -173,6 +194,7 @@ int TagFolder_setup_folder(TagFolder *self, char *name)
     self->folder[150] = '\0';//Protection because strncpy might skip  the null terminating byte...
     if(strlen(self->folder) > 0)
     {
+        Tag *tags, *ptr, *old_ptr = NULL;
         int rc;
         sqlite3 *db;
         char *req, dbname[160];
@@ -188,6 +210,34 @@ int TagFolder_setup_folder(TagFolder *self, char *name)
         }
         TagFolder_set_db(self, db);
         TagFolder_check_db_structure(self);
+        tags = TagFolder_list_tags(self);
+        ptr = tags;
+        if(tags != NULL)
+        {
+            while(ptr != NULL)
+            {
+                switch(Tag_get_type(ptr))
+                {
+                    case TagTypeInclude :
+                        old_ptr = ptr;
+                        ptr = Tag_get_next(ptr);
+                        break;
+                    case TagTypeExclude :
+                        {
+                            Tag *cur_tag_to_add = ptr;
+                            ptr = Tag_get_next(cur_tag_to_add);
+                            if(old_ptr == NULL)
+                                tags = ptr;//To be able to free tags at the end, we must have only includes.
+                            else
+                                Tag_set_next(old_ptr, ptr);
+                            Tag_set_next(cur_tag_to_add, NULL);
+                            TagFolder_set_current_exclude(self, cur_tag_to_add);
+                        }
+                        break;
+                }
+            }
+            Tag_free(tags);
+        }
     }
 }
 
@@ -259,7 +309,7 @@ int TagFolder_check_db_structure(TagFolder *self)
     
     if (rc != SQLITE_ROW)
     {
-        char *create_req = "create table tag (id INTEGER PRIMARY KEY, name varchar);", *errmsg;
+        char *create_req = "create table tag (id INTEGER PRIMARY KEY, type integer, name varchar);", *errmsg;
         rc = sqlite3_exec(self->db, create_req, NULL, NULL, &errmsg);
         if( rc )
         {   
@@ -361,7 +411,7 @@ Tag *TagFolder_list_tags(TagFolder *self)
     sqlite3_stmt *res;
     char *req;
     int rc;
-    req = "select name, id from tag;";
+    req = "select name, id, type from tag;";
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
 
     if( rc )
@@ -375,7 +425,7 @@ Tag *TagFolder_list_tags(TagFolder *self)
         rc = sqlite3_step(res);
         if(rc != SQLITE_ROW)
             break;
-        new_tag = Tag_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1));
+        new_tag = Tag_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1), sqlite3_column_int(res, 2));
         Tag_set_next(new_tag, ret);
         ret = new_tag;
     }
@@ -385,7 +435,7 @@ Tag *TagFolder_list_tags(TagFolder *self)
     return ret;
 }
 
-int TagFolder_create_tag(TagFolder *self, const char *name)
+int TagFolder_create_tag(TagFolder *self, const char *name, TagType type)
 {
     int ret = 0;
     sqlite3_stmt *res;
@@ -410,7 +460,7 @@ int TagFolder_create_tag(TagFolder *self, const char *name)
         return 0;
     }
 
-    snprintf(req, 499, "insert into tag (name) values ('%s');", name);
+    snprintf(req, 499, "insert into tag (name, type) values ('%s', %d);", name, (int)type);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
     if( rc )
     {   
@@ -758,13 +808,14 @@ int TagFolder_untag_a_file(TagFolder *self, const char *file_to_tag, const char 
 
 int TagFolder_select_tag(TagFolder *self, const char *tag)
 {
-    Tag *cur_tag;
+    Tag *cur_tag, *old_tag;
     int ret = 0;
     sqlite3_stmt *res;
     char req[500], *errmsg;
     int rc, tag_id;
+    TagType type;
 //Take "file to tag"'s id
-    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    snprintf(req, 499, "select id, type from tag where name = '%s';", tag);
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
  
     if( rc )
@@ -780,15 +831,42 @@ int TagFolder_select_tag(TagFolder *self, const char *tag)
         return -1;
     }
     tag_id = sqlite3_column_int(res, 0);
+    type = (TagType)sqlite3_column_int(res, 1);
     sqlite3_finalize(res);
-    cur_tag = self->current;
-    while(cur_tag != NULL && cur_tag->id != tag_id)
-        cur_tag = cur_tag->next;
-
-    if(cur_tag == NULL)//We don't already have get this tag
+    switch(type)
     {
-        cur_tag = Tag_new(tag, tag_id);
-        TagFolder_set_current(self, cur_tag);
+        //Select an include tag means add it into current includes list
+        case TagTypeInclude :
+            cur_tag = self->current_includes;
+            while(cur_tag != NULL && cur_tag->id != tag_id)
+                cur_tag = cur_tag->next;
+
+            if(cur_tag == NULL)//We don't already have get this tag
+            {
+                cur_tag = Tag_new(tag, tag_id, type);
+                TagFolder_set_current_include(self, cur_tag);
+            }
+            break;
+        //Select an exclude tag means delete it from current excludes list
+        case TagTypeExclude :
+            cur_tag = self->current_excludes;
+            old_tag = NULL;
+            while(cur_tag != NULL && cur_tag->id != tag_id)
+            {
+                old_tag = cur_tag;
+                cur_tag = cur_tag->next;
+            }
+    
+            if(cur_tag != NULL)//Tag to release found
+            {
+                if(old_tag != NULL)
+                    Tag_set_next(old_tag, cur_tag->next);
+                else
+                    TagFolder_set_current_exclude(self, NULL);
+                Tag_set_next(cur_tag, NULL);
+                Tag_free(cur_tag);
+            }
+            break;
     }
     return ret;
 }
@@ -796,7 +874,7 @@ int TagFolder_select_tag(TagFolder *self, const char *tag)
 //Do not free them !
 Tag *TagFolder_get_selected_tags(TagFolder *self)
 {
-   return self->current;
+   return self->current_includes;
 }
 
 int TagFolder_unselect_tag(TagFolder *self, const char *tag)
@@ -806,8 +884,9 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
     sqlite3_stmt *res;
     char req[500];
     int rc, tag_id;
+    TagType type;
 //Take "file to tag"'s id
-    snprintf(req, 499, "select id from tag where name = '%s';", tag);
+    snprintf(req, 499, "select id, type from tag where name = '%s';", tag);
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
  
     if( rc )
@@ -823,23 +902,42 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
         return -1;
     }
     tag_id = sqlite3_column_int(res, 0);
+    type = (TagType)sqlite3_column_int(res, 1);
     sqlite3_finalize(res);
-    cur_tag = self->current;
-    old_tag = NULL;
-    while(cur_tag != NULL && cur_tag->id != tag_id)
+    switch(type)
     {
-        old_tag = cur_tag;
-        cur_tag = cur_tag->next;
-    }
+        //Unselect an include tag means delete it from current includes list
+        case TagTypeInclude :
+            cur_tag = self->current_includes;
+            old_tag = NULL;
+            while(cur_tag != NULL && cur_tag->id != tag_id)
+            {
+                old_tag = cur_tag;
+                cur_tag = cur_tag->next;
+            }
+    
+            if(cur_tag != NULL)//Tag to release found
+            {
+                if(old_tag != NULL)
+                    Tag_set_next(old_tag, cur_tag->next);
+                else
+                    TagFolder_set_current_include(self, NULL);
+                Tag_set_next(cur_tag, NULL);
+                Tag_free(cur_tag);
+            }
+            break;
+        //Unselect an exclude tag means add it into current excludes list
+        case TagTypeExclude :
+            cur_tag = self->current_excludes;
+            while(cur_tag != NULL && cur_tag->id != tag_id)
+                cur_tag = cur_tag->next;
 
-    if(cur_tag != NULL)//Tag to release found
-    {
-        if(old_tag != NULL)
-            Tag_set_next(old_tag, cur_tag->next);
-        else
-            TagFolder_set_current(self, NULL);
-        Tag_set_next(cur_tag, NULL);
-        Tag_free(cur_tag);
+            if(cur_tag == NULL)//We don't already have get this tag
+            {
+                cur_tag = Tag_new(tag, tag_id, type);
+                TagFolder_set_current_exclude(self, cur_tag);
+            }
+            break;
     }
     return ret;
 }
@@ -867,7 +965,7 @@ Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const char *file)
     file_id = sqlite3_column_int(res, 0);
     sqlite3_finalize(res);
  
-    snprintf(req, 499, "SELECT name, id FROM tag inner join tagfile on tag.id = tagfile.tagid WHERE fileid = '%d';", file_id);
+    snprintf(req, 499, "SELECT name, id, type FROM tag inner join tagfile on tag.id = tagfile.tagid WHERE fileid = '%d';", file_id);
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
     if( rc )
     {
@@ -880,7 +978,7 @@ Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const char *file)
         rc = sqlite3_step(res);
         if(rc != SQLITE_ROW)
             break;
-        new_tag = Tag_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1));
+        new_tag = Tag_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1), (TagType)sqlite3_column_int(res, 2));
         Tag_set_next(new_tag, ret);
         ret = new_tag;
     }
@@ -895,22 +993,44 @@ File *TagFolder_list_current_files(TagFolder *self)
     Tag *cur_tag;
     File *ret = NULL;
     sqlite3_stmt *res;
-    char req[50000], *ptr, *errmsg;
+    char req[50000], *ptr = req, *errmsg, *main_name = "result", where_clause[5000], *ptr_where = where_clause;
     int rc, tag_id;
-    cur_tag = self->current;
+    req[0] = '\0';//Force empty
+    where_clause[0] = '\0';
+    cur_tag = self->current_includes;
     if(cur_tag != NULL)
     {
-        ptr = req + sprintf(req, "select %s.name, %s.id from (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = \"%s\") as %s", cur_tag->name, cur_tag->name, cur_tag->name, cur_tag->name);
+        ptr += sprintf(ptr, "select %s.name, %s.id from (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, cur_tag->name, main_name);
         while(cur_tag != NULL)
         {
             cur_tag = cur_tag->next;
             if(cur_tag == NULL)
                 break;
-            ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = \"%s\") as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, self->current->name);
+            ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         }
     }
-    else
+    cur_tag = self->current_excludes;
+    if(cur_tag != NULL)
+    {
+        if(req[0] != '\0')//strlen(req) > 0 but we just want to know if not 0, not length, so strlen risk to be longer...
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+        else
+            ptr += sprintf(ptr, "select %s.name, %s.id from file as %s left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", main_name, main_name, main_name, cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+        ptr_where += sprintf(ptr_where, " where %s.id is null", cur_tag->name);
+        while(cur_tag != NULL)
+        {
+            cur_tag = cur_tag->next;
+            if(cur_tag == NULL)
+                break;
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id;", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr_where += sprintf(ptr_where, " and %s.id is null", cur_tag->name);
+        }
+    }
+    if(req[0] == '\0')//strlen(req) == 0 but we just want to know if 0 or not, not length, so strlen risk to be longer...
         strcpy(req, "select name, id from file");
+    else
+        strcat(req, where_clause);
+    fprintf(stderr, "%s\n", req);
     rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
  
     if( rc )
