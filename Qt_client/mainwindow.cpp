@@ -15,7 +15,7 @@ MainWindow::MainWindow(QWidget *parent) :
     file_model = NULL;
     ui->setupUi(this);
     TagFolder_init(&folder);
-    QString path("/home/damien/dev/TagFolders/test");
+    QString path("../test");
     TagFolder_setup_folder(&folder, path.toLocal8Bit().data());
     reload_file_list();
     reload_tags_list();
