@@ -61,7 +61,8 @@ GetTagName::GetTagName(QWidget *parent)
     valider = new QPushButton(tr("&Valider"));
     valider->setDefault(true);
 
-    connect(valider, SIGNAL(released()), parent, SLOT(do_operation_on_file()));
+    connect(name, SIGNAL(textChanged(QString)), parent, SLOT(set_tag_name(QString)));
+    connect(valider, SIGNAL(released()), parent, SLOT(do_operation_on_tag()));
     connect(valider, SIGNAL(released()), this, SLOT(close()));
 
     QGridLayout *mainLayout = new QGridLayout;

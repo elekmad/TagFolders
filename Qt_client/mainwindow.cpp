@@ -32,26 +32,24 @@ MainWindow::~MainWindow()
 
 void MainWindow::reload_file_list(void)
 {
-    File *current_files;
+    File *current_files, *ptr;
     current_files = TagFolder_list_current_files(&folder);
-    if(current_files != NULL)
+    ptr = current_files;
+    QStringList list;
+    QStringListModel *m = new QStringListModel();
+    while(ptr != NULL)
     {
-        File *ptr = current_files;
-        QStringList list;
-        QStringListModel *m = new QStringListModel();
-        while(ptr != NULL)
-        {
-            list << File_get_name(ptr);
-            ptr = File_get_next(ptr);
-        }
-        m->setStringList(list);
-
-        ui->FileList->setModel(m);
-        File_free(current_files);
-        if(file_model != NULL)
-            delete file_model;
-        file_model = m;
+        list << File_get_name(ptr);
+        ptr = File_get_next(ptr);
     }
+    m->setStringList(list);
+
+    ui->FileList->setModel(m);
+    if(current_files != NULL)
+        File_free(current_files);
+    if(file_model != NULL)
+        delete file_model;
+    file_model = m;
 }
 
 void MainWindow::reload_tags_list(void)
@@ -60,15 +58,36 @@ void MainWindow::reload_tags_list(void)
     ltags = TagFolder_list_tags(&folder);
     if(ltags != NULL)
     {
-        QVBoxLayout *IncludeTagsListLayout = new QVBoxLayout();
-        IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
+        QLayoutItem *child;
         QWidget *IncludeTagsList = this->findChild<QWidget*>("IncludeTagsList");
-        QVBoxLayout *ExcludeTagsListLayout = new QVBoxLayout();
-        ExcludeTagsListLayout->setSizeConstraint(ExcludeTagsListLayout->SetMinimumSize);
-        QWidget *ExcludeTagsList = this->findChild<QWidget*>("ExcludeTagsList");
+        QVBoxLayout *IncludeTagsListLayout = qobject_cast<QVBoxLayout*>(IncludeTagsList->layout());
+        if(IncludeTagsListLayout == NULL)
+        {
+            IncludeTagsListLayout = new QVBoxLayout();
+            IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
+            IncludeTagsList->setLayout(IncludeTagsListLayout);
+            connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
+        }
+        while ((child = IncludeTagsListLayout->takeAt(0)) != 0)
+        {
+            delete child->widget();
+            delete child;
+        }
 
-        connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
-        connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
+        QWidget *ExcludeTagsList = this->findChild<QWidget*>("ExcludeTagsList");
+        QVBoxLayout *ExcludeTagsListLayout = qobject_cast<QVBoxLayout*>(ExcludeTagsList->layout());
+        if(ExcludeTagsListLayout == NULL)
+        {
+            ExcludeTagsListLayout = new QVBoxLayout();
+            ExcludeTagsListLayout->setSizeConstraint(ExcludeTagsListLayout->SetMinimumSize);
+            ExcludeTagsList->setLayout(ExcludeTagsListLayout);
+            connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
+        }
+        while ((child = ExcludeTagsListLayout->takeAt(0)) != 0)
+        {
+            delete child->widget();
+            delete child;
+        }
 
         Tag *ptr = ltags;
 
@@ -96,16 +115,13 @@ void MainWindow::reload_tags_list(void)
 
             ptr = Tag_get_next(ptr);
         }
-        IncludeTagsList->setLayout(IncludeTagsListLayout);
         if(IncludeTagsListLayout->count() == 0)
             IncludeTagsList->setVisible(false);
-        ExcludeTagsList->setLayout(ExcludeTagsListLayout);
         if(ExcludeTagsListLayout->count() == 0)
             ExcludeTagsList->setVisible(false);
         qInfo() << "exclude : " << ExcludeTagsListLayout->count() << "include : " << IncludeTagsListLayout->count();
 
         ui->retranslateUi(this);
-        QMetaObject::connectSlotsByName(this);
     }
 }
 
@@ -123,14 +139,16 @@ void MainWindow::on_checkBox_clicked(bool checked)
 
 void MainWindow::on_IncludeTag_customContextMenuRequested(const QPoint &pos)
 {
-    on_Tag_customContextMenuRequested(true);
+    tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeInclude;
+    on_Tag_customContextMenuRequested(true);
 }
 
 void MainWindow::on_ExcludeTag_customContextMenuRequested(const QPoint &pos)
 {
-    on_Tag_customContextMenuRequested(false);
+    tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeExclude;
+    on_Tag_customContextMenuRequested(false);
 }
 
 void MainWindow::on_Tag_customContextMenuRequested(bool including)
@@ -143,6 +161,7 @@ void MainWindow::on_Tag_customContextMenuRequested(bool including)
         action = menu->addAction(tr("Ajouter un Tag inclusif"));
     else
         action = menu->addAction(tr("Ajouter un Tag exclusif"));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(get_new_tag_name_window(bool)));
     checkBox = qobject_cast<QCheckBox*>(w_sender);
     if(checkBox != NULL)
     {
@@ -151,9 +170,20 @@ void MainWindow::on_Tag_customContextMenuRequested(bool including)
         action = menu->addAction(tr("Supprimer \"") + checkBox->text() + tr("\""));
     }
     menu->exec(QCursor::pos());
+}
 
-    //GetTagName Dialog(this);
-    //Dialog.exec();
+void MainWindow::get_new_tag_name_window(bool)
+{
+    qInfo() << "Fenetre Get Tag Name";
+    tag_operation->op_type = OpTypeAdd;
+    GetTagName Dialog(this);
+    Dialog.exec();
+}
+
+void MainWindow::set_tag_name(const QString &name)
+{
+    qInfo() << "set tag name" << name;
+    tag_operation->tag_name = name;
 }
 
 void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
@@ -228,4 +258,5 @@ void MainWindow::do_operation_on_tag()
             qInfo() << "Create a tag operation";
             break;
     }
+    reload_tags_list();
 }
