@@ -74,6 +74,11 @@ void Tag_set_type(Tag *self, TagType type)
     self->type = type;
 }
 
+const char *Tag_get_name(Tag *self)
+{
+   return self->name;
+}
+
 TagType Tag_get_type(Tag *self)
 {
     return self->type;
@@ -118,6 +123,11 @@ File *File_set_next(File *self, File *next)
 File *File_get_next(File *self)
 {
     return self->next;
+}
+
+const char *File_get_name(File *self)
+{
+    return self->name;
 }
 
 void File_finalize(File *self)
