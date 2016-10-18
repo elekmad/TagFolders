@@ -10,21 +10,10 @@ enum TagType
 };
 typedef enum TagType TagType;
 
-struct Tag
-{
-    int id;
-    char name[20];
-    struct Tag *next;
-    TagType type;
-};
+struct Tag;
 typedef struct Tag Tag;
 
-struct File
-{
-    int id;
-    char name[20];
-    struct File *next;
-};
+struct File;
 typedef struct File File;
 
 
@@ -42,6 +31,7 @@ void Tag_init(Tag *self, const char *name, int id, TagType type);
 Tag *Tag_new(const char *name, int id, TagType type);
 Tag *Tag_set_next(Tag *self, Tag *next);
 Tag *Tag_get_next(Tag *self);
+int Tag_get_id(Tag *self);
 const char *Tag_get_name(Tag *self);
 void Tag_set_type(Tag *self, TagType type);
 TagType Tag_get_type(Tag *self);
@@ -52,6 +42,7 @@ File *File_new(const char *name, int id);
 File *File_set_next(File *self, File *next);
 File *File_get_next(File *self);
 const char *File_get_name(File *self);
+int File_get_id(File *self);
 void File_finalize(File *self);
 void File_free(File *self);
 void TagFolder_init(TagFolder *self);

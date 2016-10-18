@@ -40,6 +40,14 @@ static void TagFolder_generate_filename(const char *str, char *out)
     }
 }
 
+struct Tag
+{
+    int id;
+    char name[20];
+    struct Tag *next;
+    TagType type;
+};
+
 void Tag_init(Tag *self, const char *name, int id, TagType type)
 {
     strncpy(self->name, name, 19);
@@ -79,6 +87,11 @@ const char *Tag_get_name(Tag *self)
    return self->name;
 }
 
+int Tag_get_id(Tag *self)
+{
+    return self->id;
+}
+
 TagType Tag_get_type(Tag *self)
 {
     return self->type;
@@ -96,6 +109,13 @@ void Tag_free(Tag *self)
     Tag_finalize(self);
     free(self);
 }
+
+struct File
+{
+    int id;
+    char name[20];
+    struct File *next;
+};
 
 void File_init(File *self, const char *name, int id)
 {
@@ -128,6 +148,12 @@ File *File_get_next(File *self)
 const char *File_get_name(File *self)
 {
     return self->name;
+}
+
+
+int File_get_id(File *self)
+{
+    return self->id;
 }
 
 void File_finalize(File *self)
