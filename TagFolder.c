@@ -868,6 +868,7 @@ int TagFolder_select_tag(TagFolder *self, const char *tag)
     }
     tag_id = sqlite3_column_int(res, 0);
     type = (TagType)sqlite3_column_int(res, 1);
+    fprintf(stderr, "tag %s %d type %d to be selected.\n", tag, tag_id, type);
     sqlite3_finalize(res);
     switch(type)
     {
@@ -898,7 +899,7 @@ int TagFolder_select_tag(TagFolder *self, const char *tag)
                 if(old_tag != NULL)
                     Tag_set_next(old_tag, cur_tag->next);
                 else
-                    TagFolder_set_current_exclude(self, NULL);
+                    self->current_excludes = cur_tag->next;
                 Tag_set_next(cur_tag, NULL);
                 Tag_free(cur_tag);
             }
@@ -939,6 +940,7 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
     }
     tag_id = sqlite3_column_int(res, 0);
     type = (TagType)sqlite3_column_int(res, 1);
+    fprintf(stderr, "tag %s %d type %d to be unselected.\n", tag, tag_id, type);
     sqlite3_finalize(res);
     switch(type)
     {
@@ -957,7 +959,7 @@ int TagFolder_unselect_tag(TagFolder *self, const char *tag)
                 if(old_tag != NULL)
                     Tag_set_next(old_tag, cur_tag->next);
                 else
-                    TagFolder_set_current_include(self, NULL);
+                    self->current_includes = cur_tag->next;
                 Tag_set_next(cur_tag, NULL);
                 Tag_free(cur_tag);
             }
@@ -1036,18 +1038,21 @@ File *TagFolder_list_current_files(TagFolder *self)
     cur_tag = self->current_includes;
     if(cur_tag != NULL)
     {
+        fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
         ptr += sprintf(ptr, "select %s.name, %s.id from (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, cur_tag->name, main_name);
         while(cur_tag != NULL)
         {
             cur_tag = cur_tag->next;
             if(cur_tag == NULL)
                 break;
+            fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
             ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         }
     }
     cur_tag = self->current_excludes;
     if(cur_tag != NULL)
     {
+        fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
         if(req[0] != '\0')//strlen(req) > 0 but we just want to know if not 0, not length, so strlen risk to be longer...
             ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         else
@@ -1058,7 +1063,8 @@ File *TagFolder_list_current_files(TagFolder *self)
             cur_tag = cur_tag->next;
             if(cur_tag == NULL)
                 break;
-            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id;", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
             ptr_where += sprintf(ptr_where, " and %s.id is null", cur_tag->name);
         }
     }
