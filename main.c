@@ -33,14 +33,14 @@ int main(int argc, char **argv)
             char *tag = line + strlen("select_tag");
             while(*tag == ' ')
                 tag++;
-            TagFolder_select_tag(&folder, tag);
+            TagFolder_select_tag(&folder, atoi(tag));
         }
         else if(strncasecmp(line, "unselect_tag", strlen("unselect_tag")) == 0)
         {
             char *tag = line + strlen("unselect_tag");
             while(*tag == ' ')
                 tag++;
-            TagFolder_unselect_tag(&folder, tag);
+            TagFolder_unselect_tag(&folder, atoi(tag));
         }
         else if(strncasecmp(line, "tag_a_file", strlen("tag_a_file")) == 0)
         {
@@ -50,7 +50,7 @@ int main(int argc, char **argv)
             strcpy(buf, tag);
             file = strtok(buf, " ");
             tag = strtok(NULL, " ");
-            TagFolder_tag_a_file(&folder, file, tag);
+            TagFolder_tag_a_file(&folder, atoi(file), atoi(tag));
         }
         else if(strncasecmp(line, "import_a_file", strlen("import_a_file")) == 0)
         {

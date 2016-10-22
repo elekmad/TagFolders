@@ -54,16 +54,16 @@ int TagFolder_check_db_structure(TagFolder *self);
 Tag *TagFolder_list_tags(TagFolder *self);
 int TagFolder_create_tag(TagFolder *self, const char *name, TagType type);
 int TagFolder_create_file_in_db(TagFolder *self, const char *name);
-int TagFolder_tag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag);
-int TagFolder_untag_a_tag(TagFolder *self, const char *tag_to_tag, const char *tag);
-int TagFolder_tag_a_file(TagFolder *self, const char *file_to_tag, const char *tag);
-int TagFolder_untag_a_file(TagFolder *self, const char *file_to_tag, const char *tag);
-int TagFolder_select_tag(TagFolder *self, const char *tag);
+int TagFolder_tag_a_tag(TagFolder *self, const int tag_to_tag_id, const int tag_id);
+int TagFolder_untag_a_tag(TagFolder *self, const int tag_to_untag, const int tag_id);
+int TagFolder_tag_a_file(TagFolder *self, const int file_to_tag_id, const int tag_id);
+int TagFolder_untag_a_file(TagFolder *self, const int file_to_untag_id, const int tag_id);
+int TagFolder_select_tag(TagFolder *self, const int tag_id);
 Tag *TagFolder_get_selected_tags(TagFolder *self);
-Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const char *file);
-int TagFolder_unselect_tag(TagFolder *self, const char *tag);
+Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const int file_id);
+int TagFolder_unselect_tag(TagFolder *self, const int tag_id);
 File *TagFolder_list_current_files(TagFolder *self);
-int TagFolder_delete_tag(TagFolder *self, const char *tag);
-int TagFolder_delete_file(TagFolder *self, const char *file);
+int TagFolder_delete_tag(TagFolder *self, const int tag_id);
+int TagFolder_delete_file(TagFolder *self, const int file_id);
 
 #endif

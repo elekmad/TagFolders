@@ -2,7 +2,10 @@
 #define MAINWINDOW_H
 
 #include <QMainWindow>
+#include <qcheckbox.h>
+#include <qaction.h>
 #include <QStringListModel>
+#include <QList>
 extern "C"
 {
 #include "/home/damien/dev/TagFolders/TagFolder.h"
@@ -22,15 +25,17 @@ class MainWindow;
 class FileOperation
 {
 public :
-    QString tag_name;
-    QString file_name;
+    int tag_id;
+    QString file_name;//For creations
+    int file_id;
     bool add_or_del;
 };
 
 class TagOperation
 {
 public :
-    QString tag_name;
+    QString tag_name;//For creations
+    int tag_id;
     OperationType op_type;
     TagType tag_type;
 };
@@ -63,9 +68,20 @@ public slots:
 private:
     Ui::MainWindow *ui;
     QStringListModel *file_model;
+    QList<int> files_ids;
     TagFolder folder;
     FileOperation *file_operation;
     TagOperation *tag_operation;
+};
+
+class TagCheckBox : public QCheckBox
+{
+public:
+    TagCheckBox(Tag *tag);
+    ~TagCheckBox();
+    Tag *get_tag(void);
+private:
+    Tag *tag;
 };
 
 #endif // MAINWINDOW_H

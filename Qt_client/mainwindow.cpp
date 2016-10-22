@@ -37,9 +37,11 @@ void MainWindow::reload_file_list(void)
     ptr = current_files;
     QStringList list;
     QStringListModel *m = new QStringListModel();
+    files_ids.clear();
     while(ptr != NULL)
     {
         list << File_get_name(ptr);
+        files_ids << File_get_id(ptr);
         ptr = File_get_next(ptr);
     }
     m->setStringList(list);
@@ -93,9 +95,9 @@ void MainWindow::reload_tags_list(void)
 
         while(ptr != NULL)
         {
-            QCheckBox *checkBox;
+            TagCheckBox *checkBox;
             QString checkbox_name(Tag_get_name(ptr));
-            checkBox = new QCheckBox;
+            checkBox = new TagCheckBox(ptr);
             checkBox->setObjectName(checkbox_name);
             checkBox->setText(checkbox_name);
             checkBox->setContextMenuPolicy(Qt::CustomContextMenu);
@@ -128,17 +130,18 @@ void MainWindow::reload_tags_list(void)
 void MainWindow::on_checkBox_clicked(bool checked)
 {
     QObject *o = sender();
-    QCheckBox *chk = qobject_cast<QCheckBox*>(o);
-    qInfo() << o << chk->text() << "checked : " << checked;
+    TagCheckBox *chk = (TagCheckBox*)qobject_cast<QCheckBox*>(o);
+    qInfo() << o << chk->text() << " (" << Tag_get_id(chk->get_tag()) << ")" << "checked : " << checked;
     if(checked)
-        TagFolder_select_tag(&folder, chk->text().toLocal8Bit().data());
+        TagFolder_select_tag(&folder, Tag_get_id(chk->get_tag()));
     else
-        TagFolder_unselect_tag(&folder, chk->text().toLocal8Bit().data());
+        TagFolder_unselect_tag(&folder, Tag_get_id(chk->get_tag()));
     reload_file_list();
 }
 
 void MainWindow::on_IncludeTag_customContextMenuRequested(const QPoint &pos)
 {
+    Q_UNUSED(pos);
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeInclude;
     on_Tag_customContextMenuRequested(true);
@@ -146,6 +149,7 @@ void MainWindow::on_IncludeTag_customContextMenuRequested(const QPoint &pos)
 
 void MainWindow::on_ExcludeTag_customContextMenuRequested(const QPoint &pos)
 {
+    Q_UNUSED(pos);
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeExclude;
     on_Tag_customContextMenuRequested(false);
@@ -188,15 +192,17 @@ void MainWindow::set_tag_name(const QString &name)
 
 void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
 {
+    Q_UNUSED(pos);
     QListView *filelist = this->findChild<QListView*>("FileList");
     QMenu *menu = new QMenu(qobject_cast<QWidget*>(filelist));
     QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
+    int file_id = files_ids[filelist->selectionModel()->selectedIndexes().first().row()];
     QAction *action;
     QMap<QString, Tag*> File_Tags;
-    Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_selected.toLocal8Bit().data()), *ptr;
+    Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_id), *ptr;
 
     file_operation = new FileOperation;
-    file_operation->file_name = file_selected;
+    file_operation->file_id= file_id;
     ptr = file_tags;
     while(ptr != NULL)
     {
@@ -206,8 +212,10 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
     ptr = all_tags;
     while(ptr != NULL)
     {
+        QVariant var(Tag_get_id(ptr));
         action = menu->addAction(tr(Tag_get_name(ptr)));
         action->setCheckable(true);
+        action->setData(var);
         connect(action, SIGNAL(toggled(bool)), this, SLOT(do_operation_on_file_window(bool)));
         if(File_Tags[tr(Tag_get_name(ptr))] != NULL)
             action->setChecked(true);
@@ -227,7 +235,7 @@ void MainWindow::do_operation_on_file_window(bool add_or_del)
         qInfo() << "Retirer un tag de : " << file_selected;
 
     file_operation->add_or_del = add_or_del;
-    file_operation->tag_name = qobject_cast<QAction*>(sender())->text();
+    file_operation->tag_id = qobject_cast<QAction*>(sender())->data().toInt();
     do_operation_on_file();
 }
 
@@ -235,13 +243,13 @@ void MainWindow::do_operation_on_file()
 {
     if(file_operation->add_or_del == true)
     {
-        TagFolder_tag_a_file(&folder, file_operation->file_name.toLocal8Bit().data(), file_operation->tag_name.toLocal8Bit().data());
-        qInfo() << "Add tag to file operation";
+        TagFolder_tag_a_file(&folder, file_operation->file_id, file_operation->tag_id);
+        qInfo() << "Add tag " << file_operation->tag_id << " to file " << file_operation->file_id;
     }
     else
     {
-        TagFolder_untag_a_file(&folder, file_operation->file_name.toLocal8Bit().data(), file_operation->tag_name.toLocal8Bit().data());
-        qInfo() << "Del tag from file operation";
+        TagFolder_untag_a_file(&folder, file_operation->file_id, file_operation->tag_id);
+        qInfo() << "Del tag " << file_operation->tag_id << " from file " << file_operation->file_id;
     }
 }
 
@@ -250,7 +258,7 @@ void MainWindow::do_operation_on_tag()
     switch(tag_operation->op_type)
     {
         case OpTypeDel :
-            TagFolder_delete_tag(&folder, tag_operation->tag_name.toLocal8Bit().data());
+            TagFolder_delete_tag(&folder, tag_operation->tag_id);
             qInfo() << "Del a tag operation";
             break;
         case OpTypeAdd :
@@ -259,4 +267,23 @@ void MainWindow::do_operation_on_tag()
             break;
     }
     reload_tags_list();
+}
+
+TagCheckBox::TagCheckBox(Tag *tag)
+{
+    if(tag != NULL)
+        this->tag = Tag_new(Tag_get_name(tag), Tag_get_id(tag), Tag_get_type(tag));
+    else
+        this->tag = NULL;
+}
+
+TagCheckBox::~TagCheckBox()
+{
+    if(tag != NULL)
+        Tag_free(tag);
+}
+
+Tag *TagCheckBox::get_tag(void)
+{
+    return this->tag;
 }
