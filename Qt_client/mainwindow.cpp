@@ -8,6 +8,7 @@
 #include <qcheckbox.h>
 #include <QObject>
 #include <QMenu>
+#include <treemodel.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -32,26 +33,25 @@ MainWindow::~MainWindow()
 
 void MainWindow::reload_file_list(void)
 {
+    QStringList headers;
+    QString datas;
     File *current_files, *ptr;
     current_files = TagFolder_list_current_files(&folder);
     ptr = current_files;
-    QStringList list;
-    QStringListModel *m = new QStringListModel();
     files_ids.clear();
+    headers << tr("Fichier") << tr("ID");
     while(ptr != NULL)
     {
-        list << File_get_name(ptr);
+        QString data;
+        data += tr(File_get_name(ptr)) + tr("\t") + QString::number(File_get_id(ptr));
         files_ids << File_get_id(ptr);
         ptr = File_get_next(ptr);
+        datas += data + tr("\n");
     }
-    m->setStringList(list);
-
-    ui->FileList->setModel(m);
+    TreeModel *m = new TreeModel(headers, datas, qobject_cast<QObject*>(this));
     if(current_files != NULL)
         File_free(current_files);
-    if(file_model != NULL)
-        delete file_model;
-    file_model = m;
+    ui->FileList->setModel(m);
 }
 
 void MainWindow::reload_tags_list(void)
@@ -193,7 +193,7 @@ void MainWindow::set_tag_name(const QString &name)
 void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
 {
     Q_UNUSED(pos);
-    QListView *filelist = this->findChild<QListView*>("FileList");
+    QTreeView *filelist = this->findChild<QTreeView*>("FileList");
     QMenu *menu = new QMenu(qobject_cast<QWidget*>(filelist));
     QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
     int file_id = files_ids[filelist->selectionModel()->selectedIndexes().first().row()];
@@ -226,7 +226,7 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
 
 void MainWindow::do_operation_on_file_window(bool add_or_del)
 {
-    QListView *filelist = this->findChild<QListView*>(tr("FileList"));
+    QTreeView *filelist = this->findChild<QTreeView*>(tr("FileList"));
     filelist->selectionModel()->selectedIndexes();
     QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
     if(add_or_del)
