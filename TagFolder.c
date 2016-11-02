@@ -4,6 +4,8 @@
 #include <stdlib.h>
 #include <openssl/md5.h>
 #include <sys/time.h>
+#include <sys/stat.h>
+#include <errno.h>
 
 static void TagFolder_generate_filename(const char *str, char *out)
 {
@@ -114,22 +116,25 @@ struct File
 {
     int id;
     char name[20];
+    struct stat stat;
     struct File *next;
 };
 
-void File_init(File *self, const char *name, int id)
+void File_init(File *self, const char *name, const char *pathname, int id)
 {
     strncpy(self->name, name, 19);
     self->name[20] = '\0';//Protection because strncpy might skip  the null terminating byte...
+    if(stat(pathname, &self->stat) == -1)
+        fprintf(stderr, "Get stat of %s failed : %s\n", pathname, strerror(errno));
     self->id = id;
     self->next = NULL;
 }
 
-File *File_new(const char *name, int id)
+File *File_new(const char *name, const char *path, int id)
 {
     File *new_tag = malloc(sizeof(File));
     if(new_tag != NULL)
-        File_init(new_tag, name, id);
+        File_init(new_tag, name, path, id);
     return new_tag;
 }
 
@@ -148,6 +153,11 @@ File *File_get_next(File *self)
 const char *File_get_name(File *self)
 {
     return self->name;
+}
+
+struct timespec *File_get_last_modification(File *self)
+{
+    return &self->stat.st_mtim;
 }
 
 
@@ -866,14 +876,14 @@ File *TagFolder_list_current_files(TagFolder *self)
     if(cur_tag != NULL)
     {
         fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
-        ptr += sprintf(ptr, "select %s.name, %s.id from (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, cur_tag->name, main_name);
+        ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, main_name, cur_tag->name, main_name);
         while(cur_tag != NULL)
         {
             cur_tag = cur_tag->next;
             if(cur_tag == NULL)
                 break;
             fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
-            ptr += sprintf(ptr, " inner join (select file.name, file.id from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr += sprintf(ptr, " inner join (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         }
     }
     cur_tag = self->current_excludes;
@@ -881,9 +891,9 @@ File *TagFolder_list_current_files(TagFolder *self)
     {
         fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
         if(req[0] != '\0')//strlen(req) > 0 but we just want to know if not 0, not length, so strlen risk to be longer...
-            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         else
-            ptr += sprintf(ptr, "select %s.name, %s.id from file as %s left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", main_name, main_name, main_name, cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from file as %s left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", main_name, main_name, main_name, main_name, cur_tag->name, cur_tag->name, cur_tag->name, main_name);
         ptr_where += sprintf(ptr_where, " where %s.id is null", cur_tag->name);
         while(cur_tag != NULL)
         {
@@ -891,12 +901,12 @@ File *TagFolder_list_current_files(TagFolder *self)
             if(cur_tag == NULL)
                 break;
             fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
-            ptr += sprintf(ptr, " left outer join (select f.id, f.name from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
             ptr_where += sprintf(ptr_where, " and %s.id is null", cur_tag->name);
         }
     }
     if(req[0] == '\0')//strlen(req) == 0 but we just want to know if 0 or not, not length, so strlen risk to be longer...
-        strcpy(req, "select name, id from file");
+        strcpy(req, "select name, id, filename from file");
     else
         strcat(req, where_clause);
     fprintf(stderr, "%s\n", req);
@@ -911,7 +921,12 @@ File *TagFolder_list_current_files(TagFolder *self)
     rc = sqlite3_step(res);
     while(rc == SQLITE_ROW)
     {
-        File *new_file = File_new(sqlite3_column_text(res, 0), sqlite3_column_int(res, 1));
+        char filename[500];
+        strcpy(filename, self->folder);
+        if(filename[strlen(filename) - 1] != '/')
+            strcat(filename, "/");
+        strcat(filename, sqlite3_column_text(res, 2));
+        File *new_file = File_new(sqlite3_column_text(res, 0), filename, sqlite3_column_int(res, 1));
         File_set_next(new_file, ret);
         ret = new_file;
 	rc = sqlite3_step(res);

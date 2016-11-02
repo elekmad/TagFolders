@@ -6,9 +6,11 @@
 #include <qlogging.h>
 #include <qdebug.h>
 #include <qcheckbox.h>
+#include <qdatetime.h>
 #include <QObject>
 #include <QMenu>
 #include <treemodel.h>
+#include <sys/stat.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -39,11 +41,13 @@ void MainWindow::reload_file_list(void)
     current_files = TagFolder_list_current_files(&folder);
     ptr = current_files;
     files_ids.clear();
-    headers << tr("Fichier") << tr("ID");
+    headers << tr("Fichier") << tr("Dernière Modification");
     while(ptr != NULL)
     {
         QString data;
-        data += tr(File_get_name(ptr)) + tr("\t") + QString::number(File_get_id(ptr));
+        QDateTime last_modif;
+        last_modif.setTime_t(File_get_last_modification(ptr)->tv_sec);
+        data += tr(File_get_name(ptr)) + tr("\t") + last_modif.toString(tr("d MMM yyyy hh:mm:ss"));
         files_ids << File_get_id(ptr);
         ptr = File_get_next(ptr);
         datas += data + tr("\n");
