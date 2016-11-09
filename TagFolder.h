@@ -34,6 +34,7 @@ Tag *Tag_get_next(Tag *self);
 int Tag_get_id(Tag *self);
 const char *Tag_get_name(Tag *self);
 struct timespec *File_get_last_modification(File *self);
+unsigned long File_get_size(File *self);
 void Tag_set_type(Tag *self, TagType type);
 TagType Tag_get_type(Tag *self);
 void Tag_finalize(Tag *self);

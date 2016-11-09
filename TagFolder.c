@@ -160,6 +160,10 @@ struct timespec *File_get_last_modification(File *self)
     return &self->stat.st_mtim;
 }
 
+unsigned long File_get_size(File *self)
+{
+    return (unsigned long)self->stat.st_size;
+}
 
 int File_get_id(File *self)
 {

@@ -58,6 +58,7 @@ private slots:
     void on_Tag_customContextMenuRequested(bool including);
     void do_operation_on_file_window(bool);
     void get_new_tag_name_window(bool);
+    void get_new_file_name_window(bool);
 
 public slots:
     void on_checkBox_clicked(bool checked);

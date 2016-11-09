@@ -41,13 +41,13 @@ void MainWindow::reload_file_list(void)
     current_files = TagFolder_list_current_files(&folder);
     ptr = current_files;
     files_ids.clear();
-    headers << tr("Fichier") << tr("Dernière Modification");
+    headers << tr("Fichier") << tr("Dernière Modification") << tr("Taille");
     while(ptr != NULL)
     {
         QString data;
         QDateTime last_modif;
         last_modif.setTime_t(File_get_last_modification(ptr)->tv_sec);
-        data += tr(File_get_name(ptr)) + tr("\t") + last_modif.toString(tr("d MMM yyyy hh:mm:ss"));
+        data += tr(File_get_name(ptr)) + tr("\t") + last_modif.toString(tr("d MMM yyyy hh:mm:ss")) + tr("\t") + QString::number(File_get_size(ptr));
         files_ids << File_get_id(ptr);
         ptr = File_get_next(ptr);
         datas += data + tr("\n");
@@ -188,6 +188,12 @@ void MainWindow::get_new_tag_name_window(bool)
     Dialog.exec();
 }
 
+void MainWindow::get_new_file_name_window(bool)
+{
+    qInfo() << "Fenetre Get File Name";
+    ///TODO
+}
+
 void MainWindow::set_tag_name(const QString &name)
 {
     qInfo() << "set tag name" << name;
@@ -199,32 +205,37 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
     Q_UNUSED(pos);
     QTreeView *filelist = this->findChild<QTreeView*>("FileList");
     QMenu *menu = new QMenu(qobject_cast<QWidget*>(filelist));
-    QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
-    int file_id = files_ids[filelist->selectionModel()->selectedIndexes().first().row()];
     QAction *action;
-    QMap<QString, Tag*> File_Tags;
-    Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_id), *ptr;
+    QItemSelectionModel *selection_model = filelist->selectionModel();
+    if(selection_model != NULL && !selection_model->selectedIndexes().isEmpty())
+    {
+        int file_id = files_ids[selection_model->selectedIndexes().first().row()];
+        QMap<QString, Tag*> File_Tags;
+        Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_id), *ptr;
 
-    file_operation = new FileOperation;
-    file_operation->file_id= file_id;
-    ptr = file_tags;
-    while(ptr != NULL)
-    {
-        File_Tags[tr(Tag_get_name(ptr))] = ptr;
-        ptr = Tag_get_next(ptr);
+        file_operation = new FileOperation;
+        file_operation->file_id= file_id;
+        ptr = file_tags;
+        while(ptr != NULL)
+        {
+            File_Tags[tr(Tag_get_name(ptr))] = ptr;
+            ptr = Tag_get_next(ptr);
+        }
+        ptr = all_tags;
+        while(ptr != NULL)
+        {
+            QVariant var(Tag_get_id(ptr));
+            action = menu->addAction(tr(Tag_get_name(ptr)));
+            action->setCheckable(true);
+            action->setData(var);
+            connect(action, SIGNAL(toggled(bool)), this, SLOT(do_operation_on_file_window(bool)));
+            if(File_Tags[tr(Tag_get_name(ptr))] != NULL)
+                action->setChecked(true);
+            ptr = Tag_get_next(ptr);
+        }
     }
-    ptr = all_tags;
-    while(ptr != NULL)
-    {
-        QVariant var(Tag_get_id(ptr));
-        action = menu->addAction(tr(Tag_get_name(ptr)));
-        action->setCheckable(true);
-        action->setData(var);
-        connect(action, SIGNAL(toggled(bool)), this, SLOT(do_operation_on_file_window(bool)));
-        if(File_Tags[tr(Tag_get_name(ptr))] != NULL)
-            action->setChecked(true);
-        ptr = Tag_get_next(ptr);
-    }
+    action = menu->addAction(tr("Importer un nouveau fichier"));
+    connect(action, SIGNAL(toggled(bool)), this, SLOT(get_new_file_name_window(bool)));
     menu->exec(QCursor::pos());
 }
 
