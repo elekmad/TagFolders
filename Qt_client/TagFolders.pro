@@ -21,7 +21,8 @@ SOURCES += main.cpp\
 HEADERS  += mainwindow.h \
     GetTagName.h \
     treemodel.h \
-    treeitem.h
+    treeitem.h \
+    ../TagFolder.h
 
 INCLUDEPATH += ../
 
