@@ -9,8 +9,10 @@
 #include <qdatetime.h>
 #include <QObject>
 #include <QMenu>
+#include <qfiledialog.h>
 #include <treemodel.h>
 #include <sys/stat.h>
+#include <unistd.h>
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -188,10 +190,20 @@ void MainWindow::get_new_tag_name_window(bool)
     Dialog.exec();
 }
 
-void MainWindow::get_new_file_name_window(bool)
+void MainWindow::import_file(bool)
 {
+    QString filename, localfilename;
+    char generated_db_name[50];
     qInfo() << "Fenetre Get File Name";
-    ///TODO
+    filename = QFileDialog::getOpenFileName(this, tr("Importer un fichier"), "~/", tr("Tous les fichiers (*.*)"));
+    TagFolder_create_file_in_db(&folder, filename.toLocal8Bit().data(), generated_db_name);
+    localfilename = TagFolder_get_folder(&folder);
+    if(localfilename.at(localfilename.length() - 1) != '/')
+        localfilename += '/';
+    localfilename += generated_db_name;
+    symlink(filename.toLocal8Bit().data(), localfilename.toLocal8Bit().data());
+    qInfo() << filename << " linked " << localfilename;
+    reload_file_list();
 }
 
 void MainWindow::set_tag_name(const QString &name)
@@ -235,7 +247,7 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
         }
     }
     action = menu->addAction(tr("Importer un nouveau fichier"));
-    connect(action, SIGNAL(toggled(bool)), this, SLOT(get_new_file_name_window(bool)));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(import_file(bool)));
     menu->exec(QCursor::pos());
 }
 
