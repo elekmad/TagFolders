@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <sys/stat.h>
 #include <errno.h>
+#include <libgen.h>
 
 static void TagFolder_generate_filename(const char *str, char *out)
 {
@@ -291,6 +292,11 @@ int TagFolder_setup_folder(TagFolder *self, char *name)
     }
 }
 
+char *TagFolder_get_folder(TagFolder *self)
+{
+    return self->folder;
+}
+
 static int TagFolder_begin_transaction(TagFolder *self)
 {
     int rc;
@@ -525,29 +531,26 @@ int TagFolder_create_tag(TagFolder *self, const char *name, TagType type)
     return ret;
 }
 
-int TagFolder_create_file_in_db(TagFolder *self, const char *name)
+int TagFolder_create_file_in_db(TagFolder *self, const char *name, char *db_name)
 {
     int ret = 0;
-    sqlite3_stmt *res;
-    char req[50], *errmsg;
+    char req[500], *errmsg, filename[500];
     int rc;
-    char db_name[33];
 //We allow multiple files to be with the same name, generating uniq filename for each.
     TagFolder_generate_filename(name, db_name);
+    strcpy(filename, name);
 
     TagFolder_begin_transaction(self);
-    snprintf(req, 499, "insert into file (name, filename) values ('%s', '%s');", name, db_name);
+    snprintf(req, 499, "insert into file (name, filename) values ('%s', '%s');", basename(filename), db_name);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
     if( rc )
     {   
         fprintf(stderr, "Can't add file %s in db : %s\n", name, errmsg);
         sqlite3_free(errmsg);
-        sqlite3_finalize(res);
         TagFolder_rollback_transaction(self);
         return -1 ;
     }
     TagFolder_commit_transaction(self);
-    sqlite3_finalize(res);
     return ret;
 }
 

@@ -54,15 +54,15 @@ int main(int argc, char **argv)
         }
         else if(strncasecmp(line, "import_a_file", strlen("import_a_file")) == 0)
         {
-            char *path = line + strlen("import_a_file"), buf[50], *name;
+            char *path = line + strlen("import_a_file"), buf[50], *name, db_name[50];
             while(*path == ' ')
                 path++;
             strcpy(buf, path);
             path = strtok(buf, " ");
             name = strtok(NULL, " ");
             
-            symlink(path, name);
-            TagFolder_create_file_in_db(&folder, name);
+            TagFolder_create_file_in_db(&folder, name, db_name);
+            symlink(path, db_name);
         }
         else if(strncasecmp(line, "list_files", strlen("list_files")) == 0)
         {
