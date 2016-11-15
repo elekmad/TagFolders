@@ -33,6 +33,7 @@ Tag *Tag_set_next(Tag *self, Tag *next);
 Tag *Tag_get_next(Tag *self);
 int Tag_get_id(Tag *self);
 const char *Tag_get_name(Tag *self);
+const char *File_get_filename(File *self);
 struct timespec *File_get_last_modification(File *self);
 unsigned long File_get_size(File *self);
 void Tag_set_type(Tag *self, TagType type);
@@ -66,6 +67,7 @@ Tag *TagFolder_get_selected_tags(TagFolder *self);
 Tag *TagFolder_get_tags_tagging_specific_file(TagFolder *self, const int file_id);
 int TagFolder_unselect_tag(TagFolder *self, const int tag_id);
 File *TagFolder_list_current_files(TagFolder *self);
+File *TagFolder_get_file_with_id(TagFolder *self, int id);
 int TagFolder_delete_tag(TagFolder *self, const int tag_id);
 int TagFolder_delete_file(TagFolder *self, const int file_id);
 

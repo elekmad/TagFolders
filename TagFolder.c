@@ -117,14 +117,20 @@ struct File
 {
     int id;
     char name[20];
+    char filename[50];
     struct stat stat;
     struct File *next;
 };
 
 void File_init(File *self, const char *name, const char *pathname, int id)
 {
+    char filename[200];
     strncpy(self->name, name, 19);
     self->name[20] = '\0';//Protection because strncpy might skip  the null terminating byte...
+    strncpy(filename, pathname, 199);
+    filename[200] = '\0';//Protection because strncpy might skip  the null terminating byte...
+    strncpy(self->filename, basename(filename), 49);
+    self->filename[50] = '\0';//Protection because strncpy might skip  the null terminating byte...
     if(stat(pathname, &self->stat) == -1)
         fprintf(stderr, "Get stat of %s failed : %s\n", pathname, strerror(errno));
     self->id = id;
@@ -154,6 +160,11 @@ File *File_get_next(File *self)
 const char *File_get_name(File *self)
 {
     return self->name;
+}
+
+const char *File_get_filename(File *self)
+{
+    return self->filename;
 }
 
 struct timespec *File_get_last_modification(File *self)
@@ -942,6 +953,38 @@ File *TagFolder_list_current_files(TagFolder *self)
     return ret;
 }
 
+File *TagFolder_get_file_with_id(TagFolder *self, int id)
+{
+    Tag *cur_tag;
+    File *ret = NULL;
+    sqlite3_stmt *res;
+    char req[50000], *ptr = req, *errmsg;
+    int rc, tag_id;
+    req[0] = '\0';//Force empty
+    snprintf(req, sizeof(req) - 1, "SELECT name, id, filename FROM file WHERE id = %d", id);
+    fprintf(stderr, "%s\n", req);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't get info for file %d : %s\n", id, sqlite3_errmsg(self->db));
+        return ret ;
+    }
+ 
+    rc = sqlite3_step(res);
+    if(rc == SQLITE_ROW)
+    {
+        char filename[500];
+        strcpy(filename, self->folder);
+        if(filename[strlen(filename) - 1] != '/')
+            strcat(filename, "/");
+        strcat(filename, sqlite3_column_text(res, 2));
+        ret = File_new(sqlite3_column_text(res, 0), filename, sqlite3_column_int(res, 1));
+    }
+    sqlite3_finalize(res);
+    return ret;
+}
+
 int TagFolder_delete_tag(TagFolder *self, const int tag_id)
 {
     int ret = 0;
@@ -1006,11 +1049,11 @@ int TagFolder_delete_file(TagFolder *self, const int file_id)
         return -1 ;
     }
 
-    snprintf(req, 499, "delete from filefile where fileid = %d;", file_id);
+    snprintf(req, 499, "delete from tagfile where fileid = %d;", file_id);
     rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
     if( rc )
     {
-        fprintf(stderr, "Can't delete file %d filefile table : %s\n", file_id, errmsg);
+        fprintf(stderr, "Can't delete file %d tagfile table : %s\n", file_id, errmsg);
         sqlite3_free(errmsg);
         sqlite3_finalize(res);
         TagFolder_rollback_transaction(self);

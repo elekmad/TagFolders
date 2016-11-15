@@ -206,6 +206,25 @@ void MainWindow::import_file(bool)
     reload_file_list();
 }
 
+void MainWindow::delete_file(bool)
+{
+    File *f;
+    qInfo() << "delete file " << file_operation->file_id;
+    f = TagFolder_get_file_with_id(&folder, file_operation->file_id);
+    if(f != NULL)
+    {
+        QString localfilename;
+        localfilename = TagFolder_get_folder(&folder);
+        if(localfilename.at(localfilename.length() - 1) != '/')
+            localfilename += '/';
+        localfilename += File_get_filename(f);
+        qInfo() << "delete file name : " << localfilename;
+        TagFolder_delete_file(&folder, file_operation->file_id);
+        unlink(localfilename.toLocal8Bit().data());
+        reload_file_list();
+    }
+}
+
 void MainWindow::set_tag_name(const QString &name)
 {
     qInfo() << "set tag name" << name;
@@ -245,6 +264,8 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
                 action->setChecked(true);
             ptr = Tag_get_next(ptr);
         }
+        action = menu->addAction(tr("Supprimer le fichier"));
+        connect(action, SIGNAL(triggered(bool)), this, SLOT(delete_file(bool)));
     }
     action = menu->addAction(tr("Importer un nouveau fichier"));
     connect(action, SIGNAL(triggered(bool)), this, SLOT(import_file(bool)));
