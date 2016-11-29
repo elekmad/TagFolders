@@ -54,7 +54,7 @@
 #include <QDialog>
 extern "C"
 {
-#include "/home/damien/dev/TagFolders/TagFolder.h"
+#include <TagFolder.h>
 }
 
 class QLabel;
