@@ -22,11 +22,13 @@ HEADERS  += mainwindow.h \
     GetTagName.h \
     treemodel.h \
     treeitem.h \
-    ../TagFolder.h
+    ../TagFolder.h \
+    ../String/src/string_project/String.h
 
-INCLUDEPATH += ../
+INCLUDEPATH += ../ \
+ ../String/src/string_project/
 
-LIBS += -L../ -lTagFolder -lsqlite3 -lssl -lcrypto
+LIBS += -L../ -lTagFolder -lsqlite3 -lssl -lcrypto -L../String/src/string_project-build/ -lStrings
 
 FORMS    += mainwindow.ui
 

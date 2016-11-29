@@ -13,6 +13,10 @@
 #include <treemodel.h>
 #include <sys/stat.h>
 #include <unistd.h>
+extern "C"
+{
+#include <String.h>
+}
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -49,7 +53,7 @@ void MainWindow::reload_file_list(void)
         QString data;
         QDateTime last_modif;
         last_modif.setTime_t(File_get_last_modification(ptr)->tv_sec);
-        data += tr(File_get_name(ptr)) + tr("\t") + last_modif.toString(tr("d MMM yyyy hh:mm:ss")) + tr("\t") + QString::number(File_get_size(ptr));
+        data += tr(String_get_char_string(File_get_name(ptr))) + tr("\t") + last_modif.toString(tr("d MMM yyyy hh:mm:ss")) + tr("\t") + QString::number(File_get_size(ptr));
         files_ids << File_get_id(ptr);
         ptr = File_get_next(ptr);
         datas += data + tr("\n");
@@ -102,7 +106,7 @@ void MainWindow::reload_tags_list(void)
         while(ptr != NULL)
         {
             TagCheckBox *checkBox;
-            QString checkbox_name(Tag_get_name(ptr));
+            QString checkbox_name(String_get_char_string(Tag_get_name(ptr)));
             checkBox = new TagCheckBox(ptr);
             checkBox->setObjectName(checkbox_name);
             checkBox->setText(checkbox_name);
@@ -197,7 +201,7 @@ void MainWindow::import_file(bool)
     qInfo() << "Fenetre Get File Name";
     filename = QFileDialog::getOpenFileName(this, tr("Importer un fichier"), "~/", tr("Tous les fichiers (*.*)"));
     TagFolder_create_file_in_db(&folder, filename.toLocal8Bit().data(), generated_db_name);
-    localfilename = TagFolder_get_folder(&folder);
+    localfilename = String_get_char_string(TagFolder_get_folder(&folder));
     if(localfilename.at(localfilename.length() - 1) != '/')
         localfilename += '/';
     localfilename += generated_db_name;
@@ -214,10 +218,10 @@ void MainWindow::delete_file(bool)
     if(f != NULL)
     {
         QString localfilename;
-        localfilename = TagFolder_get_folder(&folder);
+        localfilename = String_get_char_string(TagFolder_get_folder(&folder));
         if(localfilename.at(localfilename.length() - 1) != '/')
             localfilename += '/';
-        localfilename += File_get_filename(f);
+        localfilename += String_get_char_string(File_get_filename(f));
         qInfo() << "delete file name : " << localfilename;
         TagFolder_delete_file(&folder, file_operation->file_id);
         unlink(localfilename.toLocal8Bit().data());
@@ -249,18 +253,18 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
         ptr = file_tags;
         while(ptr != NULL)
         {
-            File_Tags[tr(Tag_get_name(ptr))] = ptr;
+            File_Tags[tr(String_get_char_string(Tag_get_name(ptr)))] = ptr;
             ptr = Tag_get_next(ptr);
         }
         ptr = all_tags;
         while(ptr != NULL)
         {
             QVariant var(Tag_get_id(ptr));
-            action = menu->addAction(tr(Tag_get_name(ptr)));
+            action = menu->addAction(tr(String_get_char_string(Tag_get_name(ptr))));
             action->setCheckable(true);
             action->setData(var);
             connect(action, SIGNAL(toggled(bool)), this, SLOT(do_operation_on_file_window(bool)));
-            if(File_Tags[tr(Tag_get_name(ptr))] != NULL)
+            if(File_Tags[tr(String_get_char_string(Tag_get_name(ptr)))] != NULL)
                 action->setChecked(true);
             ptr = Tag_get_next(ptr);
         }
@@ -320,7 +324,7 @@ void MainWindow::do_operation_on_tag()
 TagCheckBox::TagCheckBox(Tag *tag)
 {
     if(tag != NULL)
-        this->tag = Tag_new(Tag_get_name(tag), Tag_get_id(tag), Tag_get_type(tag));
+        this->tag = Tag_new(String_get_char_string(Tag_get_name(tag)), Tag_get_id(tag), Tag_get_type(tag));
     else
         this->tag = NULL;
 }

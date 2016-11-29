@@ -46,15 +46,15 @@ static void TagFolder_generate_filename(const char *str, char *out)
 struct Tag
 {
     int id;
-    char name[20];
+    String name;
     struct Tag *next;
     TagType type;
 };
 
 void Tag_init(Tag *self, const char *name, int id, TagType type)
 {
-    strncpy(self->name, name, 19);
-    self->name[20] = '\0';//Protection because strncpy might skip  the null terminating byte...
+    String_init(&self->name);
+    String_append_char_string(&self->name, name);
     self->id = id;
     self->next = NULL;
     self->type = type;
@@ -85,9 +85,9 @@ void Tag_set_type(Tag *self, TagType type)
     self->type = type;
 }
 
-const char *Tag_get_name(Tag *self)
+const String *Tag_get_name(Tag *self)
 {
-   return self->name;
+   return &self->name;
 }
 
 int Tag_get_id(Tag *self)
@@ -105,6 +105,7 @@ void Tag_finalize(Tag *self)
     Tag *ret = Tag_set_next(self, NULL);
     if(ret != NULL)
         Tag_free(ret);
+    String_finalize(&self->name);
 }
 
 void Tag_free(Tag *self)
@@ -116,21 +117,21 @@ void Tag_free(Tag *self)
 struct File
 {
     int id;
-    char name[20];
-    char filename[50];
+    String name;
+    String filename;
     struct stat stat;
     struct File *next;
 };
 
 void File_init(File *self, const char *name, const char *pathname, int id)
 {
-    char filename[200];
-    strncpy(self->name, name, 19);
-    self->name[20] = '\0';//Protection because strncpy might skip  the null terminating byte...
-    strncpy(filename, pathname, 199);
-    filename[200] = '\0';//Protection because strncpy might skip  the null terminating byte...
-    strncpy(self->filename, basename(filename), 49);
-    self->filename[50] = '\0';//Protection because strncpy might skip  the null terminating byte...
+    char *filename;
+    String_init(&self->name);
+    String_append_char_string(&self->name, name);
+    filename = strdup(pathname);
+    String_init(&self->filename);
+    String_append_char_string(&self->filename, basename(filename));
+    free(filename);
     if(stat(pathname, &self->stat) == -1)
         fprintf(stderr, "Get stat of %s failed : %s\n", pathname, strerror(errno));
     self->id = id;
@@ -157,14 +158,14 @@ File *File_get_next(File *self)
     return self->next;
 }
 
-const char *File_get_name(File *self)
+const String *File_get_name(File *self)
 {
-    return self->name;
+    return &self->name;
 }
 
-const char *File_get_filename(File *self)
+const String *File_get_filename(File *self)
 {
-    return self->filename;
+    return &self->filename;
 }
 
 struct timespec *File_get_last_modification(File *self)
@@ -187,6 +188,8 @@ void File_finalize(File *self)
     File *ret = File_set_next(self, NULL);
     if(ret != NULL)
         File_free(ret);
+    String_finalize(&self->filename);
+    String_finalize(&self->name);
 }
 
 void File_free(File *self)
@@ -198,7 +201,7 @@ void File_free(File *self)
 
 void TagFolder_init(TagFolder *self)
 {
-    self->folder[0] = '\0';
+    String_init(&self->folder);
     self->current_includes = NULL;
     self->current_excludes = NULL;
     self->db = NULL;
@@ -235,6 +238,7 @@ static void TagFolder_set_current_exclude(TagFolder *self, Tag *cur)
 
 void TagFolder_finalize(TagFolder *self)
 {
+    String_finalize(&self->folder);
     TagFolder_set_db(self, NULL);
     if(self->current_includes != NULL)
         Tag_free(self->current_includes);
@@ -250,21 +254,23 @@ void TagFolder_free(TagFolder *self)
 
 int TagFolder_check_db_structure(TagFolder *);
 
-int TagFolder_setup_folder(TagFolder *self, char *name)
+int TagFolder_setup_folder(TagFolder *self, const char *name)
 {
-    strncpy(self->folder, name, 149);
-    self->folder[150] = '\0';//Protection because strncpy might skip  the null terminating byte...
-    if(strlen(self->folder) > 0)
+    String_set_char_string(&self->folder, name);
+    if(String_get_char_at(&self->folder, String_get_length(&self->folder) - 1) != '/')
+        String_append_char(&self->folder, '/');
+    if(String_get_length(&self->folder) > 0)
     {
         Tag *tags, *ptr, *old_ptr = NULL;
         int rc;
         sqlite3 *db;
-        char *req, dbname[160];
-        strcpy(dbname, self->folder);
-        if(dbname[strlen(dbname) - 1] != '/')
-            strcat(dbname, "/");
-        strcat(dbname, ".TagFolder.sql");
-        rc = sqlite3_open(dbname, &db);
+        String dbname;
+        char *req;
+        String_init(&dbname);
+        String_append_String(&dbname, &self->folder);
+        String_append_char_string(&dbname, ".TagFolder.sql");
+        rc = sqlite3_open(String_get_data(&dbname), &db);
+        String_finalize(&dbname);
         if( rc )
         {
             fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
@@ -303,9 +309,9 @@ int TagFolder_setup_folder(TagFolder *self, char *name)
     }
 }
 
-char *TagFolder_get_folder(TagFolder *self)
+String *TagFolder_get_folder(TagFolder *self)
 {
-    return self->folder;
+    return &self->folder;
 }
 
 static int TagFolder_begin_transaction(TagFolder *self)
@@ -893,34 +899,40 @@ File *TagFolder_list_current_files(TagFolder *self)
     cur_tag = self->current_includes;
     if(cur_tag != NULL)
     {
-        fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
-        ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, main_name, cur_tag->name, main_name);
+        const char *tag_name = String_get_data(Tag_get_name(cur_tag));
+        fprintf(stderr, "cur include tag = '%s'\n", tag_name);
+        ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s", main_name, main_name, main_name, tag_name, main_name);
         while(cur_tag != NULL)
         {
-            cur_tag = cur_tag->next;
+            const char *cur_tag_name;
+            cur_tag = Tag_get_next(cur_tag);
             if(cur_tag == NULL)
                 break;
-            fprintf(stderr, "cur include tag = '%s'\n", cur_tag->name);
-            ptr += sprintf(ptr, " inner join (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            cur_tag_name = String_get_data(Tag_get_name(cur_tag));
+            fprintf(stderr, "cur include tag = '%s'\n", cur_tag_name);
+            ptr += sprintf(ptr, " inner join (select file.name, file.id, file.filename from file inner join tagfile on file.id = tagfile.fileid inner join tag on tagfile.tagid = tag.id where tag.name = '%s') as %s on %s.id = %s.id", cur_tag_name, cur_tag_name, cur_tag_name, main_name);
         }
     }
     cur_tag = self->current_excludes;
     if(cur_tag != NULL)
     {
-        fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
+        const char *tag_name = String_get_data(Tag_get_name(cur_tag));
+        fprintf(stderr, "cur exclude tag = '%s'\n", tag_name);
         if(req[0] != '\0')//strlen(req) > 0 but we just want to know if not 0, not length, so strlen risk to be longer...
-            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", tag_name, tag_name, tag_name, main_name);
         else
-            ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from file as %s left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", main_name, main_name, main_name, main_name, cur_tag->name, cur_tag->name, cur_tag->name, main_name);
-        ptr_where += sprintf(ptr_where, " where %s.id is null", cur_tag->name);
+            ptr += sprintf(ptr, "select %s.name, %s.id, %s.filename from file as %s left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", main_name, main_name, main_name, main_name, tag_name, tag_name, tag_name, main_name);
+        ptr_where += sprintf(ptr_where, " where %s.id is null", tag_name);
         while(cur_tag != NULL)
         {
-            cur_tag = cur_tag->next;
+            const char *cur_tag_name;
+            cur_tag = Tag_get_next(cur_tag);
             if(cur_tag == NULL)
                 break;
-            fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag->name);
-            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag->name, cur_tag->name, cur_tag->name, main_name);
-            ptr_where += sprintf(ptr_where, " and %s.id is null", cur_tag->name);
+            cur_tag_name = String_get_data(Tag_get_name(cur_tag));
+            fprintf(stderr, "cur exclude tag = '%s'\n", cur_tag_name);
+            ptr += sprintf(ptr, " left outer join (select f.id, f.name, f.filename from file as f inner join tagfile as tf on f.id = tf.fileid inner join tag as t on tf.tagid = t.id where t.name = '%s') as %s on %s.id = %s.id", cur_tag_name, cur_tag_name, cur_tag_name, main_name);
+            ptr_where += sprintf(ptr_where, " and %s.id is null", cur_tag_name);
         }
     }
     if(req[0] == '\0')//strlen(req) == 0 but we just want to know if 0 or not, not length, so strlen risk to be longer...
@@ -939,12 +951,12 @@ File *TagFolder_list_current_files(TagFolder *self)
     rc = sqlite3_step(res);
     while(rc == SQLITE_ROW)
     {
-        char filename[500];
-        strcpy(filename, self->folder);
-        if(filename[strlen(filename) - 1] != '/')
-            strcat(filename, "/");
-        strcat(filename, sqlite3_column_text(res, 2));
-        File *new_file = File_new(sqlite3_column_text(res, 0), filename, sqlite3_column_int(res, 1));
+        String filename;
+        String_init(&filename);
+        String_append_String(&filename, &self->folder);
+        String_append_char_string(&filename, sqlite3_column_text(res, 2));
+        File *new_file = File_new(sqlite3_column_text(res, 0), String_get_data(&filename), sqlite3_column_int(res, 1));
+        String_finalize(&filename);
         File_set_next(new_file, ret);
         ret = new_file;
 	rc = sqlite3_step(res);
@@ -974,12 +986,12 @@ File *TagFolder_get_file_with_id(TagFolder *self, int id)
     rc = sqlite3_step(res);
     if(rc == SQLITE_ROW)
     {
-        char filename[500];
-        strcpy(filename, self->folder);
-        if(filename[strlen(filename) - 1] != '/')
-            strcat(filename, "/");
-        strcat(filename, sqlite3_column_text(res, 2));
-        ret = File_new(sqlite3_column_text(res, 0), filename, sqlite3_column_int(res, 1));
+        String filename;
+        String_init(&filename);
+        String_append_String(&filename, &self->folder);
+        String_append_char_string(&filename, sqlite3_column_text(res, 2));
+        ret = File_new(sqlite3_column_text(res, 0), String_get_data(&filename), sqlite3_column_int(res, 1));
+        String_finalize(&filename);
     }
     sqlite3_finalize(res);
     return ret;

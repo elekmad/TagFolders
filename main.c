@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <TagFolder.h>
+#include <String.h>
 
 TagFolder folder;
 
@@ -73,7 +74,7 @@ int main(int argc, char **argv)
                 cur_file = files;
                 while(cur_file != NULL)
                 {
-                    printf("File : %s %d\n", File_get_name(cur_file), File_get_id(cur_file));
+                    printf("File : %s %d\n", String_get_char_string(File_get_name(cur_file)), File_get_id(cur_file));
                     cur_file = File_get_next(cur_file);
                 }
                 File_free(files);
@@ -87,7 +88,7 @@ int main(int argc, char **argv)
                 cur = list;
                 while(cur != NULL)
                 {
-                    printf("Tag : %s %d\n", Tag_get_name(cur), Tag_get_id(cur));
+                    printf("Tag : %s %d\n", String_get_char_string(Tag_get_name(cur)), Tag_get_id(cur));
                     cur = Tag_get_next(cur);
                 }
                 Tag_free(list);
@@ -101,7 +102,7 @@ int main(int argc, char **argv)
                 cur = list;
                 while(cur != NULL)
                 {
-                    printf("Selected Tag : %s %d\n", Tag_get_name(cur), Tag_get_id(cur));
+                    printf("Selected Tag : %s %d\n", String_get_char_string(Tag_get_name(cur)), Tag_get_id(cur));
                     cur = Tag_get_next(cur);
                 }
             }

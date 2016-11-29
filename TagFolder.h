@@ -1,6 +1,7 @@
 #ifndef _TAG_FOLDER_H_
 #define _TAG_FOLDER_H_
 #include <sqlite3.h>
+#include <String.h>
 
 enum TagType
 {
@@ -19,7 +20,7 @@ typedef struct File File;
 
 struct TagFolder
 {
-    char folder[150];
+    String folder;
     sqlite3 *db;
     Tag *current_includes;
     Tag *current_excludes;
@@ -32,8 +33,8 @@ Tag *Tag_new(const char *name, int id, TagType type);
 Tag *Tag_set_next(Tag *self, Tag *next);
 Tag *Tag_get_next(Tag *self);
 int Tag_get_id(Tag *self);
-const char *Tag_get_name(Tag *self);
-const char *File_get_filename(File *self);
+const String *Tag_get_name(Tag *self);
+const String *File_get_filename(File *self);
 struct timespec *File_get_last_modification(File *self);
 unsigned long File_get_size(File *self);
 void Tag_set_type(Tag *self, TagType type);
@@ -44,7 +45,7 @@ void File_init(File *self, const char *name, const char *path, int id);
 File *File_new(const char *name, const char *path, int id);
 File *File_set_next(File *self, File *next);
 File *File_get_next(File *self);
-const char *File_get_name(File *self);
+const String *File_get_name(File *self);
 int File_get_id(File *self);
 void File_finalize(File *self);
 void File_free(File *self);
@@ -52,8 +53,8 @@ void TagFolder_init(TagFolder *self);
 TagFolder *TagFolder_new(void);
 void TagFolder_finalize(TagFolder *self);
 void TagFolder_free(TagFolder *self);
-int TagFolder_setup_folder(TagFolder *self, char *name);
-char *TagFolder_get_folder(TagFolder *self);
+int TagFolder_setup_folder(TagFolder *self, const char *name);
+String *TagFolder_get_folder(TagFolder *self);
 int TagFolder_check_db_structure(TagFolder *self);
 Tag *TagFolder_list_tags(TagFolder *self);
 int TagFolder_create_tag(TagFolder *self, const char *name, TagType type);
