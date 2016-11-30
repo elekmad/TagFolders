@@ -7,6 +7,7 @@
 #include <qdebug.h>
 #include <qcheckbox.h>
 #include <qdatetime.h>
+#include <qlabel.h>
 #include <QObject>
 #include <QMenu>
 #include <qfiledialog.h>
@@ -23,20 +24,31 @@ MainWindow::MainWindow(QWidget *parent) :
     ui(new Ui::MainWindow)
 {
     file_model = NULL;
+    folder = NULL;
     ui->setupUi(this);
-    TagFolder_init(&folder);
-    QString path("../test");
-    TagFolder_setup_folder(&folder, path.toLocal8Bit().data());
-    reload_file_list();
-    reload_tags_list();
+//    QString path("../test");
+//    SetupTagFolder(path);
 }
 
 MainWindow::~MainWindow()
 {
     delete ui;
-    TagFolder_finalize(&folder);
+    if(folder != NULL)
+        TagFolder_free(folder);
     if(file_model != NULL)
         delete file_model;
+}
+
+void MainWindow::SetupTagFolder(QString &path)
+{
+    if(folder != NULL)
+        TagFolder_free(folder);
+    folder = TagFolder_new();
+    TagFolder_setup_folder(folder, path.toLocal8Bit().data());
+    reload_file_list();
+    reload_tags_list();
+    QLabel *label = this->findChild<QLabel*>("DirName");
+    label->setText(path);
 }
 
 void MainWindow::reload_file_list(void)
@@ -44,7 +56,7 @@ void MainWindow::reload_file_list(void)
     QStringList headers;
     QString datas;
     File *current_files, *ptr;
-    current_files = TagFolder_list_current_files(&folder);
+    current_files = TagFolder_list_current_files(folder);
     ptr = current_files;
     files_ids.clear();
     headers << tr("Fichier") << tr("Dernière Modification") << tr("Taille");
@@ -67,40 +79,43 @@ void MainWindow::reload_file_list(void)
 void MainWindow::reload_tags_list(void)
 {
     Tag *ltags;
-    ltags = TagFolder_list_tags(&folder);
+    ltags = TagFolder_list_tags(folder);
+    QLayoutItem *child;
+
+    //Build tags layouts and empty them if needed
+    QWidget *IncludeTagsList = this->findChild<QWidget*>("IncludeTagsList");
+    QVBoxLayout *IncludeTagsListLayout = qobject_cast<QVBoxLayout*>(IncludeTagsList->layout());
+    if(IncludeTagsListLayout == NULL)
+    {
+        IncludeTagsListLayout = new QVBoxLayout();
+        IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
+        IncludeTagsList->setLayout(IncludeTagsListLayout);
+        connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
+    }
+    while ((child = IncludeTagsListLayout->takeAt(0)) != 0)
+    {
+        delete child->widget();
+        delete child;
+    }
+
+    QWidget *ExcludeTagsList = this->findChild<QWidget*>("ExcludeTagsList");
+    QVBoxLayout *ExcludeTagsListLayout = qobject_cast<QVBoxLayout*>(ExcludeTagsList->layout());
+    if(ExcludeTagsListLayout == NULL)
+    {
+        ExcludeTagsListLayout = new QVBoxLayout();
+        ExcludeTagsListLayout->setSizeConstraint(ExcludeTagsListLayout->SetMinimumSize);
+        ExcludeTagsList->setLayout(ExcludeTagsListLayout);
+        connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
+    }
+    while ((child = ExcludeTagsListLayout->takeAt(0)) != 0)
+    {
+        delete child->widget();
+        delete child;
+    }
+
+    //If there is tags, fill layouts.
     if(ltags != NULL)
     {
-        QLayoutItem *child;
-        QWidget *IncludeTagsList = this->findChild<QWidget*>("IncludeTagsList");
-        QVBoxLayout *IncludeTagsListLayout = qobject_cast<QVBoxLayout*>(IncludeTagsList->layout());
-        if(IncludeTagsListLayout == NULL)
-        {
-            IncludeTagsListLayout = new QVBoxLayout();
-            IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
-            IncludeTagsList->setLayout(IncludeTagsListLayout);
-            connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
-        }
-        while ((child = IncludeTagsListLayout->takeAt(0)) != 0)
-        {
-            delete child->widget();
-            delete child;
-        }
-
-        QWidget *ExcludeTagsList = this->findChild<QWidget*>("ExcludeTagsList");
-        QVBoxLayout *ExcludeTagsListLayout = qobject_cast<QVBoxLayout*>(ExcludeTagsList->layout());
-        if(ExcludeTagsListLayout == NULL)
-        {
-            ExcludeTagsListLayout = new QVBoxLayout();
-            ExcludeTagsListLayout->setSizeConstraint(ExcludeTagsListLayout->SetMinimumSize);
-            ExcludeTagsList->setLayout(ExcludeTagsListLayout);
-            connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
-        }
-        while ((child = ExcludeTagsListLayout->takeAt(0)) != 0)
-        {
-            delete child->widget();
-            delete child;
-        }
-
         Tag *ptr = ltags;
 
         while(ptr != NULL)
@@ -143,9 +158,9 @@ void MainWindow::on_checkBox_clicked(bool checked)
     TagCheckBox *chk = (TagCheckBox*)qobject_cast<QCheckBox*>(o);
     qInfo() << o << chk->text() << " (" << Tag_get_id(chk->get_tag()) << ")" << "checked : " << checked;
     if(checked)
-        TagFolder_select_tag(&folder, Tag_get_id(chk->get_tag()));
+        TagFolder_select_tag(folder, Tag_get_id(chk->get_tag()));
     else
-        TagFolder_unselect_tag(&folder, Tag_get_id(chk->get_tag()));
+        TagFolder_unselect_tag(folder, Tag_get_id(chk->get_tag()));
     reload_file_list();
 }
 
@@ -200,8 +215,8 @@ void MainWindow::import_file(bool)
     char generated_db_name[50];
     qInfo() << "Fenetre Get File Name";
     filename = QFileDialog::getOpenFileName(this, tr("Importer un fichier"), "~/", tr("Tous les fichiers (*.*)"));
-    TagFolder_create_file_in_db(&folder, filename.toLocal8Bit().data(), generated_db_name);
-    localfilename = String_get_char_string(TagFolder_get_folder(&folder));
+    TagFolder_create_file_in_db(folder, filename.toLocal8Bit().data(), generated_db_name);
+    localfilename = String_get_char_string(TagFolder_get_folder(folder));
     if(localfilename.at(localfilename.length() - 1) != '/')
         localfilename += '/';
     localfilename += generated_db_name;
@@ -214,16 +229,16 @@ void MainWindow::delete_file(bool)
 {
     File *f;
     qInfo() << "delete file " << file_operation->file_id;
-    f = TagFolder_get_file_with_id(&folder, file_operation->file_id);
+    f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
     {
         QString localfilename;
-        localfilename = String_get_char_string(TagFolder_get_folder(&folder));
+        localfilename = String_get_char_string(TagFolder_get_folder(folder));
         if(localfilename.at(localfilename.length() - 1) != '/')
             localfilename += '/';
         localfilename += String_get_char_string(File_get_filename(f));
         qInfo() << "delete file name : " << localfilename;
-        TagFolder_delete_file(&folder, file_operation->file_id);
+        TagFolder_delete_file(folder, file_operation->file_id);
         unlink(localfilename.toLocal8Bit().data());
         reload_file_list();
     }
@@ -246,7 +261,7 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
     {
         int file_id = files_ids[selection_model->selectedIndexes().first().row()];
         QMap<QString, Tag*> File_Tags;
-        Tag *all_tags = TagFolder_list_tags(&folder), *file_tags = TagFolder_get_tags_tagging_specific_file(&folder, file_id), *ptr;
+        Tag *all_tags = TagFolder_list_tags(folder), *file_tags = TagFolder_get_tags_tagging_specific_file(folder, file_id), *ptr;
 
         file_operation = new FileOperation;
         file_operation->file_id= file_id;
@@ -295,12 +310,12 @@ void MainWindow::do_operation_on_file()
 {
     if(file_operation->add_or_del == true)
     {
-        TagFolder_tag_a_file(&folder, file_operation->file_id, file_operation->tag_id);
+        TagFolder_tag_a_file(folder, file_operation->file_id, file_operation->tag_id);
         qInfo() << "Add tag " << file_operation->tag_id << " to file " << file_operation->file_id;
     }
     else
     {
-        TagFolder_untag_a_file(&folder, file_operation->file_id, file_operation->tag_id);
+        TagFolder_untag_a_file(folder, file_operation->file_id, file_operation->tag_id);
         qInfo() << "Del tag " << file_operation->tag_id << " from file " << file_operation->file_id;
     }
 }
@@ -310,11 +325,11 @@ void MainWindow::do_operation_on_tag()
     switch(tag_operation->op_type)
     {
         case OpTypeDel :
-            TagFolder_delete_tag(&folder, tag_operation->tag_id);
+            TagFolder_delete_tag(folder, tag_operation->tag_id);
             qInfo() << "Del a tag operation";
             break;
         case OpTypeAdd :
-            TagFolder_create_tag(&folder, tag_operation->tag_name.toLocal8Bit().data(), tag_operation->tag_type);
+            TagFolder_create_tag(folder, tag_operation->tag_name.toLocal8Bit().data(), tag_operation->tag_type);
             qInfo() << "Create a tag operation";
             break;
     }
@@ -338,4 +353,12 @@ TagCheckBox::~TagCheckBox()
 Tag *TagCheckBox::get_tag(void)
 {
     return this->tag;
+}
+
+void MainWindow::on_OpenDir_released()
+{
+    QString dirname;
+    dirname = QFileDialog::getExistingDirectory(this, tr("Ouvrir le dossier"));
+    qInfo() << dirname;
+    SetupTagFolder(dirname);
 }

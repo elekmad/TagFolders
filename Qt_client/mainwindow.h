@@ -61,6 +61,9 @@ private slots:
     void import_file(bool);
     void delete_file(bool);
 
+    void on_OpenDir_released();
+    void SetupTagFolder(QString &path);
+
 public slots:
     void on_checkBox_clicked(bool checked);
     void do_operation_on_file();
@@ -71,7 +74,7 @@ private:
     Ui::MainWindow *ui;
     QStringListModel *file_model;
     QList<int> files_ids;
-    TagFolder folder;
+    TagFolder *folder;
     FileOperation *file_operation;
     TagOperation *tag_operation;
 };

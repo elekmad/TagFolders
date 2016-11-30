@@ -17,8 +17,8 @@
    <widget class="QTreeView" name="FileList">
     <property name="geometry">
      <rect>
-      <x>200</x>
-      <y>0</y>
+      <x>220</x>
+      <y>30</y>
       <width>491</width>
       <height>321</height>
      </rect>
@@ -30,8 +30,8 @@
    <widget class="QScrollArea" name="IncludeTagsList">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>10</y>
+      <x>70</x>
+      <y>90</y>
       <width>120</width>
       <height>91</height>
      </rect>
@@ -59,8 +59,8 @@
    <widget class="QScrollArea" name="ExcludeTagsList">
     <property name="geometry">
      <rect>
-      <x>50</x>
-      <y>220</y>
+      <x>70</x>
+      <y>240</y>
       <width>120</width>
       <height>101</height>
      </rect>
@@ -82,6 +82,32 @@
      </property>
     </widget>
    </widget>
+   <widget class="QLabel" name="DirName">
+    <property name="geometry">
+     <rect>
+      <x>220</x>
+      <y>0</y>
+      <width>401</width>
+      <height>17</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string/>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="OpenDir">
+    <property name="geometry">
+     <rect>
+      <x>630</x>
+      <y>0</y>
+      <width>85</width>
+      <height>27</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Ouvrir</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">
    <property name="geometry">
@@ -89,7 +115,7 @@
      <x>0</x>
      <y>0</y>
      <width>733</width>
-     <height>26</height>
+     <height>27</height>
     </rect>
    </property>
   </widget>
