@@ -7,7 +7,7 @@ include(ExternalProject)
 set(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/String")
 
 externalproject_add(string_project
-       GIT_REPOSITORY git@github.com:elekmad/String.git
+       GIT_REPOSITORY https://github.com/elekmad/String.git
        PREFIX "${STRINGS}"
        INSTALL_COMMAND ""
        CMAKE_ARGS "-DEXTERNAL_PROJECT=1"
