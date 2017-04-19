@@ -53,9 +53,9 @@ public:
 private slots:
 
     void on_FileList_customContextMenuRequested(const QPoint &pos);
-    void on_IncludeTag_customContextMenuRequested(const QPoint &pos);
-    void on_ExcludeTag_customContextMenuRequested(const QPoint &pos);
-    void on_Tag_customContextMenuRequested(bool including);
+    void IncludeTag_customContextMenuRequested(const QPoint &pos);
+    void ExcludeTag_customContextMenuRequested(const QPoint &pos);
+    void Tag_customContextMenuRequested(bool including);
     void do_operation_on_file_window(bool);
     void get_new_tag_name_window(bool);
     void open_file(bool);
@@ -66,7 +66,7 @@ private slots:
     void SetupTagFolder(QString &path);
 
 public slots:
-    void on_checkBox_clicked(bool checked);
+    void Tag_checkBox_clicked(bool checked);
     void do_operation_on_file();
     void do_operation_on_tag();
     void set_tag_name(const QString &name);

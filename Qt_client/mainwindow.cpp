@@ -91,7 +91,7 @@ void MainWindow::reload_tags_list(void)
         IncludeTagsListLayout = new QVBoxLayout();
         IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
         IncludeTagsList->setLayout(IncludeTagsListLayout);
-        connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
+        connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
     }
     while ((child = IncludeTagsListLayout->takeAt(0)) != 0)
     {
@@ -106,7 +106,7 @@ void MainWindow::reload_tags_list(void)
         ExcludeTagsListLayout = new QVBoxLayout();
         ExcludeTagsListLayout->setSizeConstraint(ExcludeTagsListLayout->SetMinimumSize);
         ExcludeTagsList->setLayout(ExcludeTagsListLayout);
-        connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
+        connect(ExcludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ExcludeTag_customContextMenuRequested(QPoint)));
     }
     while ((child = ExcludeTagsListLayout->takeAt(0)) != 0)
     {
@@ -127,17 +127,17 @@ void MainWindow::reload_tags_list(void)
             checkBox->setObjectName(checkbox_name);
             checkBox->setText(checkbox_name);
             checkBox->setContextMenuPolicy(Qt::CustomContextMenu);
-            connect(checkBox, SIGNAL(clicked(bool)), this, SLOT(on_checkBox_clicked(bool)));
+            connect(checkBox, SIGNAL(clicked(bool)), this, SLOT(Tag_checkBox_clicked(bool)));
 
             switch(Tag_get_type(ptr))
             {
                 case TagTypeInclude :
                     IncludeTagsListLayout->addWidget(checkBox);
-                    connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_IncludeTag_customContextMenuRequested(QPoint)));
+                    connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
                     break;
                 case TagTypeExclude :
                     ExcludeTagsListLayout->addWidget(checkBox);
-                    connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(on_ExcludeTag_customContextMenuRequested(QPoint)));
+                    connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ExcludeTag_customContextMenuRequested(QPoint)));
                     break;
             }
 
@@ -153,7 +153,7 @@ void MainWindow::reload_tags_list(void)
     }
 }
 
-void MainWindow::on_checkBox_clicked(bool checked)
+void MainWindow::Tag_checkBox_clicked(bool checked)
 {
     QObject *o = sender();
     TagCheckBox *chk = (TagCheckBox*)qobject_cast<QCheckBox*>(o);
@@ -165,23 +165,23 @@ void MainWindow::on_checkBox_clicked(bool checked)
     reload_file_list();
 }
 
-void MainWindow::on_IncludeTag_customContextMenuRequested(const QPoint &pos)
+void MainWindow::IncludeTag_customContextMenuRequested(const QPoint &pos)
 {
     Q_UNUSED(pos);
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeInclude;
-    on_Tag_customContextMenuRequested(true);
+    Tag_customContextMenuRequested(true);
 }
 
-void MainWindow::on_ExcludeTag_customContextMenuRequested(const QPoint &pos)
+void MainWindow::ExcludeTag_customContextMenuRequested(const QPoint &pos)
 {
     Q_UNUSED(pos);
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeExclude;
-    on_Tag_customContextMenuRequested(false);
+    Tag_customContextMenuRequested(false);
 }
 
-void MainWindow::on_Tag_customContextMenuRequested(bool including)
+void MainWindow::Tag_customContextMenuRequested(bool including)
 {
     QWidget *w_sender = qobject_cast<QWidget*>(sender());
     QCheckBox *checkBox;
