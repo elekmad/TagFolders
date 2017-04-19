@@ -10,6 +10,7 @@
 #include <qlabel.h>
 #include <QObject>
 #include <QMenu>
+#include <QDesktopServices>
 #include <qfiledialog.h>
 #include <treemodel.h>
 #include <sys/stat.h>
@@ -225,6 +226,23 @@ void MainWindow::import_file(bool)
     reload_file_list();
 }
 
+void MainWindow::open_file(bool)
+{
+    File *f;
+    qInfo() << "open file " << file_operation->file_id;
+    f = TagFolder_get_file_with_id(folder, file_operation->file_id);
+    if(f != NULL)
+    {
+        QString localfilename = "file://";
+        localfilename += String_get_char_string(TagFolder_get_folder(folder));
+        if(localfilename.at(localfilename.length() - 1) != '/')
+            localfilename += '/';
+        localfilename += String_get_char_string(File_get_filename(f));
+        qInfo() << "delete file name : " << localfilename;
+        QDesktopServices::openUrl(QUrl(localfilename, QUrl::TolerantMode));
+    }
+}
+
 void MainWindow::delete_file(bool)
 {
     File *f;
@@ -263,6 +281,8 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
         QMap<QString, Tag*> File_Tags;
         Tag *all_tags = TagFolder_list_tags(folder), *file_tags = TagFolder_get_tags_tagging_specific_file(folder, file_id), *ptr;
 
+        action = menu->addAction(tr("Ouvrir"));
+        connect(action, SIGNAL(triggered(bool)), this, SLOT(open_file(bool)));
         file_operation = new FileOperation;
         file_operation->file_id= file_id;
         ptr = file_tags;
