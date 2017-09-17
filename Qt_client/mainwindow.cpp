@@ -27,8 +27,6 @@ MainWindow::MainWindow(QWidget *parent) :
     file_model = NULL;
     folder = NULL;
     ui->setupUi(this);
-//    QString path("../test");
-//    SetupTagFolder(path);
 }
 
 MainWindow::~MainWindow()
