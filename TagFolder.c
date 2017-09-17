@@ -758,6 +758,8 @@ int TagFolder_select_tag(TagFolder *self, const int tag_id)
                 cur_tag = Tag_new(tag, tag_id, type);
                 TagFolder_set_current_include(self, cur_tag);
             }
+            else//We already have it
+                ret = -2;
             break;
         //Select an exclude tag means delete it from current excludes list
         case TagTypeExclude :
@@ -778,6 +780,8 @@ int TagFolder_select_tag(TagFolder *self, const int tag_id)
                 Tag_set_next(cur_tag, NULL);
                 Tag_free(cur_tag);
             }
+            else//We already have it
+                ret = -2;
             break;
     }
     sqlite3_finalize(res);
