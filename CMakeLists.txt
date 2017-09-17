@@ -16,20 +16,20 @@ externalproject_add(string_project
 add_library(TagFolder STATIC TagFolder.c TagFolder.h)
 include_directories(TagFolder "${CMAKE_CURRENT_BINARY_DIR}" "${STRINGS}/src/string_project/")
 
-add_executable(TagFolders main.c)
-target_link_libraries(TagFolders TagFolder)
-target_link_libraries(TagFolders "-L${STRINGS}/src/string_project-build/ -lStrings")
+#add_executable(TagFolders main.c)
+#target_link_libraries(TagFolders TagFolder)
+#target_link_libraries(TagFolders "-L${STRINGS}/src/string_project-build/ -lStrings")
 
 #Déclaration de l'exécutable
 
-target_link_libraries (TagFolders "-lsqlite3")
-include_directories("-I/usr/include/readline")
-target_link_libraries (TagFolders "-L/usr/local/lib -lreadline")
+target_link_libraries (TagFolder "-lsqlite3")
+#include_directories("-I/usr/include/readline")
+#target_link_libraries (TagFolders "-L/usr/local/lib -lreadline")
 
 find_package(OpenSSL)
 if(OPENSSL_FOUND)
     include_directories(${OPENSSL_INCLUDE_DIR})
-    target_link_libraries (TagFolders ${OPENSSL_LIBRARIES})
+    target_link_libraries (TagFolder ${OPENSSL_LIBRARIES})
 endif (OPENSSL_FOUND)
 
 if( WITH_COREDEBUG )
