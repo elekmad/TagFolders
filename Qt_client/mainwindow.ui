@@ -18,9 +18,9 @@
     <property name="geometry">
      <rect>
       <x>220</x>
-      <y>30</y>
+      <y>60</y>
       <width>491</width>
-      <height>321</height>
+      <height>291</height>
      </rect>
     </property>
     <property name="contextMenuPolicy">
@@ -48,24 +48,14 @@
     <property name="widgetResizable">
      <bool>false</bool>
     </property>
-    <widget class="QWidget" name="scrollAreaWidgetContents">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>105</width>
-       <height>89</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
    <widget class="QScrollArea" name="ExcludeTagsList">
     <property name="geometry">
      <rect>
-      <x>70</x>
-      <y>240</y>
-      <width>120</width>
-      <height>101</height>
+      <x>9</x>
+      <y>260</y>
+      <width>201</width>
+      <height>81</height>
      </rect>
     </property>
     <property name="contextMenuPolicy">
@@ -79,8 +69,8 @@
       <rect>
        <x>0</x>
        <y>0</y>
-       <width>118</width>
-       <height>99</height>
+       <width>199</width>
+       <height>79</height>
       </rect>
      </property>
     </widget>
@@ -110,6 +100,48 @@
     <property name="text">
      <string>Ouvrir</string>
     </property>
+   </widget>
+   <widget class="QTreeWidget" name="treeWidget">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>60</y>
+      <width>201</width>
+      <height>192</height>
+     </rect>
+    </property>
+    <property name="contextMenuPolicy">
+     <enum>Qt::CustomContextMenu</enum>
+    </property>
+    <column>
+     <property name="text">
+      <string>Tags</string>
+     </property>
+    </column>
+   </widget>
+   <widget class="QGroupBox" name="SelectedTags">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>10</y>
+      <width>611</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Tags sélectionnés</string>
+    </property>
+    <widget class="QWidget" name="horizontalLayoutWidget">
+     <property name="geometry">
+      <rect>
+       <x>9</x>
+       <y>20</y>
+       <width>601</width>
+       <height>21</height>
+      </rect>
+     </property>
+     <layout class="QHBoxLayout" name="UnselectTagsHL"/>
+    </widget>
    </widget>
   </widget>
   <widget class="QMenuBar" name="menuBar">

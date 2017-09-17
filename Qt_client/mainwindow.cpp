@@ -10,7 +10,9 @@
 #include <qlabel.h>
 #include <QObject>
 #include <QMenu>
+#include <QVariant>
 #include <QDesktopServices>
+#include <QTreeWidgetItem>
 #include <qfiledialog.h>
 #include <treemodel.h>
 #include <sys/stat.h>
@@ -81,22 +83,6 @@ void MainWindow::reload_tags_list(void)
     ltags = TagFolder_list_tags(folder);
     QLayoutItem *child;
 
-    //Build tags layouts and empty them if needed
-    QWidget *IncludeTagsList = this->findChild<QWidget*>("IncludeTagsList");
-    QVBoxLayout *IncludeTagsListLayout = qobject_cast<QVBoxLayout*>(IncludeTagsList->layout());
-    if(IncludeTagsListLayout == NULL)
-    {
-        IncludeTagsListLayout = new QVBoxLayout();
-        IncludeTagsListLayout->setSizeConstraint(IncludeTagsListLayout->SetMinimumSize);
-        IncludeTagsList->setLayout(IncludeTagsListLayout);
-        connect(IncludeTagsList, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
-    }
-    while ((child = IncludeTagsListLayout->takeAt(0)) != 0)
-    {
-        delete child->widget();
-        delete child;
-    }
-
     QWidget *ExcludeTagsList = this->findChild<QWidget*>("ExcludeTagsList");
     QVBoxLayout *ExcludeTagsListLayout = qobject_cast<QVBoxLayout*>(ExcludeTagsList->layout());
     if(ExcludeTagsListLayout == NULL)
@@ -116,36 +102,44 @@ void MainWindow::reload_tags_list(void)
     if(ltags != NULL)
     {
         Tag *ptr = ltags;
+        QTreeWidget *tw = this->findChild<QTreeWidget*>("treeWidget");
+        connect(tw, SIGNAL(customContextMenuRequest(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
 
         while(ptr != NULL)
         {
             TagCheckBox *checkBox;
             QString checkbox_name(String_get_char_string(Tag_get_name(ptr)));
-            checkBox = new TagCheckBox(ptr);
-            checkBox->setObjectName(checkbox_name);
-            checkBox->setText(checkbox_name);
-            checkBox->setContextMenuPolicy(Qt::CustomContextMenu);
-            connect(checkBox, SIGNAL(clicked(bool)), this, SLOT(Tag_checkBox_clicked(bool)));
+
 
             switch(Tag_get_type(ptr))
             {
                 case TagTypeInclude :
-                    IncludeTagsListLayout->addWidget(checkBox);
-                    connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
+                {
+                    QStringList list;
+                    list << checkbox_name;
+                    qInfo() << "add " << checkbox_name << "to list";
+                    TagSelectItem *item = new TagSelectItem(list, ptr);
+                    tw->insertTopLevelItem(0, item);
                     break;
+                }
                 case TagTypeExclude :
+                {
+                    checkBox = new TagCheckBox(ptr);
+                    checkBox->setObjectName(checkbox_name);
+                    checkBox->setText(checkbox_name);
+                    checkBox->setContextMenuPolicy(Qt::CustomContextMenu);
+                    connect(checkBox, SIGNAL(clicked(bool)), this, SLOT(Tag_checkBox_clicked(bool)));
                     ExcludeTagsListLayout->addWidget(checkBox);
                     connect(checkBox, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(ExcludeTag_customContextMenuRequested(QPoint)));
                     break;
+                }
             }
 
             ptr = Tag_get_next(ptr);
         }
-        if(IncludeTagsListLayout->count() == 0)
-            IncludeTagsList->setVisible(false);
         if(ExcludeTagsListLayout->count() == 0)
             ExcludeTagsList->setVisible(false);
-        qInfo() << "exclude : " << ExcludeTagsListLayout->count() << "include : " << IncludeTagsListLayout->count();
+        qInfo() << "exclude : " << ExcludeTagsListLayout->count();// << "include : " << IncludeTagsListLayout->count();
 
         ui->retranslateUi(this);
     }
@@ -163,12 +157,26 @@ void MainWindow::Tag_checkBox_clicked(bool checked)
     reload_file_list();
 }
 
+void MainWindow::Tag_unselect_button_clicked(bool clicked)
+{
+    Q_UNUSED(clicked);
+    QObject *o = sender();
+    TagUnselectButton *button = (TagUnselectButton*)qobject_cast<QPushButton*>(o);
+    qInfo() << "unselect tag " << o << button->text() << " (" << Tag_get_id(button->get_tag()) << ")";
+    TagFolder_unselect_tag(folder, Tag_get_id(button->get_tag()));
+    reload_file_list();
+    QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
+    qInfo() << "button " << button << "parent " << o << "hbox " << hbox;
+    hbox->removeWidget(button);
+    button->setParent(NULL);
+}
+
 void MainWindow::IncludeTag_customContextMenuRequested(const QPoint &pos)
 {
-    Q_UNUSED(pos);
+    qInfo() << "passage";
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeInclude;
-    Tag_customContextMenuRequested(true);
+    Tag_customContextMenuRequested(true, pos);
 }
 
 void MainWindow::ExcludeTag_customContextMenuRequested(const QPoint &pos)
@@ -176,27 +184,35 @@ void MainWindow::ExcludeTag_customContextMenuRequested(const QPoint &pos)
     Q_UNUSED(pos);
     tag_operation = new TagOperation;
     tag_operation->tag_type = TagTypeExclude;
-    Tag_customContextMenuRequested(false);
+    Tag_customContextMenuRequested(false, pos);
 }
 
-void MainWindow::Tag_customContextMenuRequested(bool including)
+void MainWindow::Tag_customContextMenuRequested(bool including, const QPoint &pos)
 {
     QWidget *w_sender = qobject_cast<QWidget*>(sender());
-    QCheckBox *checkBox;
+    QCheckBox *checkBox = qobject_cast<QCheckBox*>(w_sender);
     QMenu *menu = new QMenu(w_sender);
     QAction *action;
+    QString tag_name;
     if(including)
         action = menu->addAction(tr("Ajouter un Tag inclusif"));
     else
         action = menu->addAction(tr("Ajouter un Tag exclusif"));
     connect(action, SIGNAL(triggered(bool)), this, SLOT(get_new_tag_name_window(bool)));
-    checkBox = qobject_cast<QCheckBox*>(w_sender);
-    if(checkBox != NULL)
+    if(checkBox != NULL) // Comming from exclude checkbox list
     {
-        qInfo() << checkBox->text();
-        action = menu->addAction(tr("Renommer \"") + checkBox->text() + tr("\""));
-        action = menu->addAction(tr("Supprimer \"") + checkBox->text() + tr("\""));
+        tag_name = checkBox->text();
     }
+    else
+    {
+        QTreeWidget *w = qobject_cast<QTreeWidget*>(sender());
+        TagSelectItem *item = (TagSelectItem*)w->itemAt(pos);
+        tag_name = String_get_char_string(Tag_get_name(item->get_tag()));
+    }
+    qInfo() << tag_name;
+    action = menu->addAction(tr("Renommer \"") + tag_name + tr("\""));
+    action = menu->addAction(tr("Supprimer \"") + tag_name + tr("\""));
+
     menu->exec(QCursor::pos());
 }
 
@@ -387,10 +403,70 @@ Tag *TagCheckBox::get_tag(void)
     return this->tag;
 }
 
+TagSelectItem::TagSelectItem(QStringList &list, Tag *tag):QTreeWidgetItem(list, 0)
+{
+    if(tag != NULL)
+        this->tag = Tag_new(String_get_char_string(Tag_get_name(tag)), Tag_get_id(tag), Tag_get_type(tag));
+    else
+        this->tag = NULL;
+}
+
+TagSelectItem::~TagSelectItem()
+{
+    if(tag != NULL)
+        Tag_free(tag);
+}
+
+Tag *TagSelectItem::get_tag(void)
+{
+    return this->tag;
+}
+
+TagUnselectButton::TagUnselectButton(Tag *tag, QWidget *parent):QPushButton(parent)
+{
+    if(tag != NULL)
+    {
+        this->tag = Tag_new(String_get_char_string(Tag_get_name(tag)), Tag_get_id(tag), Tag_get_type(tag));
+        this->setText(tr(String_get_char_string(Tag_get_name(tag))));
+    }
+    else
+        this->tag = NULL;
+}
+
+TagUnselectButton::~TagUnselectButton()
+{
+    if(tag != NULL)
+        Tag_free(tag);
+}
+
+Tag *TagUnselectButton::get_tag(void)
+{
+    return this->tag;
+}
+
 void MainWindow::on_OpenDir_released()
 {
     QString dirname;
     dirname = QFileDialog::getExistingDirectory(this, tr("Ouvrir le dossier"));
     qInfo() << dirname;
     SetupTagFolder(dirname);
+}
+
+void MainWindow::on_treeWidget_itemDoubleClicked(QTreeWidgetItem *i, int column)
+{
+    TagSelectItem *item = (TagSelectItem*)i;
+    qInfo() << item->text(column);
+    qInfo() << "Select " << item->text(column) << " (" << Tag_get_id(item->get_tag()) << ")";
+    if(TagFolder_select_tag(folder, Tag_get_id(item->get_tag())) == 0)
+    {
+        reload_file_list();
+        QGroupBox *selectedtags = this->findChild<QGroupBox*>("SelectedTags");
+        QHBoxLayout *hbox = selectedtags->findChild<QHBoxLayout*>("UnselectTagsHL");
+        TagUnselectButton *button = new TagUnselectButton(item->get_tag(), selectedtags);
+        qInfo() << "button " << button << "parent " << button->parent();
+        connect(button, SIGNAL(clicked(bool)), this, SLOT(Tag_unselect_button_clicked(bool)));
+        hbox->addWidget(button);
+        qInfo() << "button " << button << "parent " << button->parent() << "group " << selectedtags << "layout " << hbox;
+        hbox->addStretch(1);
+    }
 }
