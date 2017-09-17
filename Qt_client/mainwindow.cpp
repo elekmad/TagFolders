@@ -224,9 +224,10 @@ void MainWindow::import_file(bool)
     reload_file_list();
 }
 
-void MainWindow::open_file(bool)
+void MainWindow::open_file(bool b)
 {
     File *f;
+    Q_UNUSED(b);
     qInfo() << "open file " << file_operation->file_id;
     f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
@@ -308,6 +309,19 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
     connect(action, SIGNAL(triggered(bool)), this, SLOT(import_file(bool)));
     menu->exec(QCursor::pos());
 }
+
+void MainWindow::on_FileList_doubleClicked(const QModelIndex &index)
+{
+    int file_id = files_ids[index.row()];
+    File *file = TagFolder_get_file_with_id(folder, file_id);
+    qInfo() << "file id" << file_id << " : " << File_get_name(file);
+    if(file_operation != NULL)
+        delete file_operation;
+    file_operation = new FileOperation;
+    file_operation->file_id = file_id;
+    open_file();
+}
+
 
 void MainWindow::do_operation_on_file_window(bool add_or_del)
 {

@@ -26,6 +26,9 @@
     <property name="contextMenuPolicy">
      <enum>Qt::CustomContextMenu</enum>
     </property>
+    <property name="editTriggers">
+     <set>QAbstractItemView::NoEditTriggers</set>
+    </property>
    </widget>
    <widget class="QScrollArea" name="IncludeTagsList">
     <property name="geometry">

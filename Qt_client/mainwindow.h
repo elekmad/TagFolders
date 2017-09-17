@@ -58,12 +58,14 @@ private slots:
     void Tag_customContextMenuRequested(bool including);
     void do_operation_on_file_window(bool);
     void get_new_tag_name_window(bool);
-    void open_file(bool);
+    void open_file(bool b = true);
     void import_file(bool);
     void delete_file(bool);
 
     void on_OpenDir_released();
     void SetupTagFolder(QString &path);
+
+    void on_FileList_doubleClicked(const QModelIndex &index);
 
 public slots:
     void Tag_checkBox_clicked(bool checked);
