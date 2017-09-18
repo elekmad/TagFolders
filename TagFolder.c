@@ -269,13 +269,14 @@ int TagFolder_setup_folder(TagFolder *self, const char *name)
         String_init(&dbname);
         String_append_String(&dbname, &self->folder);
         String_append_char_string(&dbname, ".TagFolder.sql");
-        rc = sqlite3_open(String_get_data(&dbname), &db);
-        String_finalize(&dbname);
+        rc = sqlite3_open(String_get_char_string(&dbname), &db);
         if( rc )
         {
-            fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
+            fprintf(stderr, "Can't open database '%s': %s\n", String_get_char_string(&dbname), sqlite3_errmsg(db));
+            String_finalize(&dbname);
             return -1 ;
         }
+        String_finalize(&dbname);
         TagFolder_set_db(self, db);
         TagFolder_check_db_structure(self);
         tags = TagFolder_list_tags(self);
@@ -307,6 +308,7 @@ int TagFolder_setup_folder(TagFolder *self, const char *name)
             Tag_free(tags);
         }
     }
+    return 0;
 }
 
 String *TagFolder_get_folder(TagFolder *self)
