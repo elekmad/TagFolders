@@ -15,10 +15,10 @@ externalproject_add(string_project
 
 add_library(TagFolder STATIC TagFolder.c TagFolder.h)
 include_directories(TagFolder "${CMAKE_CURRENT_BINARY_DIR}" "${STRINGS}/src/string_project/")
+target_link_libraries(TagFolder "-L${STRINGS}/src/string_project-build/ -lStrings")
 
 #add_executable(TagFolders main.c)
 #target_link_libraries(TagFolders TagFolder)
-#target_link_libraries(TagFolders "-L${STRINGS}/src/string_project-build/ -lStrings")
 
 #Déclaration de l'exécutable
 
