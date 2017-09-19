@@ -98,11 +98,19 @@ void MainWindow::reload_tags_list(void)
         delete child;
     }
 
+    QTreeWidget *tw = this->findChild<QTreeWidget*>("treeWidget");
+    QTreeWidgetItem *item;
+    while((item = tw->topLevelItem(0)) != NULL)
+    {
+        tw->removeItemWidget(item, 0);
+        delete item;
+    }
+
+
     //If there is tags, fill layouts.
     if(ltags != NULL)
     {
         Tag *ptr = ltags;
-        QTreeWidget *tw = this->findChild<QTreeWidget*>("treeWidget");
         connect(tw, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
 
         while(ptr != NULL)
