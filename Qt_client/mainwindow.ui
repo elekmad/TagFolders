@@ -20,7 +20,7 @@
       <x>220</x>
       <y>60</y>
       <width>491</width>
-      <height>291</height>
+      <height>281</height>
      </rect>
     </property>
     <property name="contextMenuPolicy">
@@ -29,32 +29,6 @@
     <property name="editTriggers">
      <set>QAbstractItemView::NoEditTriggers</set>
     </property>
-   </widget>
-   <widget class="QScrollArea" name="ExcludeTagsList">
-    <property name="geometry">
-     <rect>
-      <x>9</x>
-      <y>260</y>
-      <width>201</width>
-      <height>81</height>
-     </rect>
-    </property>
-    <property name="contextMenuPolicy">
-     <enum>Qt::CustomContextMenu</enum>
-    </property>
-    <property name="widgetResizable">
-     <bool>true</bool>
-    </property>
-    <widget class="QWidget" name="scrollAreaWidgetContents_2">
-     <property name="geometry">
-      <rect>
-       <x>0</x>
-       <y>0</y>
-       <width>199</width>
-       <height>79</height>
-      </rect>
-     </property>
-    </widget>
    </widget>
    <widget class="QLabel" name="DirName">
     <property name="geometry">
@@ -122,6 +96,45 @@
       </rect>
      </property>
      <layout class="QHBoxLayout" name="UnselectTagsHL"/>
+    </widget>
+   </widget>
+   <widget class="QGroupBox" name="groupBox">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>250</y>
+      <width>201</width>
+      <height>101</height>
+     </rect>
+    </property>
+    <property name="title">
+     <string>Exclude Tags</string>
+    </property>
+    <widget class="QScrollArea" name="ExcludeTagsList">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>20</y>
+       <width>201</width>
+       <height>71</height>
+      </rect>
+     </property>
+     <property name="contextMenuPolicy">
+      <enum>Qt::CustomContextMenu</enum>
+     </property>
+     <property name="widgetResizable">
+      <bool>true</bool>
+     </property>
+     <widget class="QWidget" name="scrollAreaWidgetContents_2">
+      <property name="geometry">
+       <rect>
+        <x>0</x>
+        <y>0</y>
+        <width>199</width>
+        <height>69</height>
+       </rect>
+      </property>
+     </widget>
     </widget>
    </widget>
   </widget>
