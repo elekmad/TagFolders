@@ -103,7 +103,7 @@ void MainWindow::reload_tags_list(void)
     {
         Tag *ptr = ltags;
         QTreeWidget *tw = this->findChild<QTreeWidget*>("treeWidget");
-        connect(tw, SIGNAL(customContextMenuRequest(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
+        connect(tw, SIGNAL(customContextMenuRequested(QPoint)), this, SLOT(IncludeTag_customContextMenuRequested(QPoint)));
 
         while(ptr != NULL)
         {
