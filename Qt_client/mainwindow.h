@@ -63,13 +63,13 @@ private slots:
     void open_file(bool b = true);
     void import_file(bool);
     void delete_file(bool);
-
-    void on_OpenDir_released();
     void SetupTagFolder(QString &path);
 
     void on_treeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column);
 
     void on_FileList_doubleClicked(const QModelIndex &index);
+
+    void on_action_Open_triggered();
 
 public slots:
     void Tag_checkBox_clicked(bool checked);

@@ -19,7 +19,7 @@
      <rect>
       <x>220</x>
       <y>60</y>
-      <width>491</width>
+      <width>501</width>
       <height>281</height>
      </rect>
     </property>
@@ -28,32 +28,6 @@
     </property>
     <property name="editTriggers">
      <set>QAbstractItemView::NoEditTriggers</set>
-    </property>
-   </widget>
-   <widget class="QLabel" name="DirName">
-    <property name="geometry">
-     <rect>
-      <x>220</x>
-      <y>0</y>
-      <width>401</width>
-      <height>17</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string/>
-    </property>
-   </widget>
-   <widget class="QPushButton" name="OpenDir">
-    <property name="geometry">
-     <rect>
-      <x>630</x>
-      <y>0</y>
-      <width>85</width>
-      <height>27</height>
-     </rect>
-    </property>
-    <property name="text">
-     <string>Ouvrir</string>
     </property>
    </widget>
    <widget class="QTreeWidget" name="treeWidget">
@@ -79,7 +53,7 @@
      <rect>
       <x>10</x>
       <y>10</y>
-      <width>611</width>
+      <width>711</width>
       <height>51</height>
      </rect>
     </property>
@@ -89,13 +63,17 @@
     <widget class="QWidget" name="horizontalLayoutWidget">
      <property name="geometry">
       <rect>
-       <x>9</x>
+       <x>-1</x>
        <y>20</y>
-       <width>601</width>
+       <width>711</width>
        <height>21</height>
       </rect>
      </property>
-     <layout class="QHBoxLayout" name="UnselectTagsHL"/>
+     <layout class="QHBoxLayout" name="UnselectTagsHL">
+      <property name="sizeConstraint">
+       <enum>QLayout::SetDefaultConstraint</enum>
+      </property>
+     </layout>
     </widget>
    </widget>
    <widget class="QGroupBox" name="groupBox">
@@ -147,6 +125,14 @@
      <height>27</height>
     </rect>
    </property>
+   <widget class="QMenu" name="menuTagFolder">
+    <property name="title">
+     <string>Tag&amp;Folder</string>
+    </property>
+    <addaction name="action_Open"/>
+    <addaction name="action_Quit"/>
+   </widget>
+   <addaction name="menuTagFolder"/>
   </widget>
   <widget class="QToolBar" name="mainToolBar">
    <attribute name="toolBarArea">
@@ -157,8 +143,41 @@
    </attribute>
   </widget>
   <widget class="QStatusBar" name="statusBar"/>
+  <action name="action_Open">
+   <property name="text">
+    <string>&amp;Open</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+O</string>
+   </property>
+  </action>
+  <action name="action_Quit">
+   <property name="text">
+    <string>&amp;Quit</string>
+   </property>
+   <property name="shortcut">
+    <string>Ctrl+X</string>
+   </property>
+  </action>
  </widget>
  <layoutdefault spacing="6" margin="11"/>
  <resources/>
- <connections/>
+ <connections>
+  <connection>
+   <sender>action_Quit</sender>
+   <signal>triggered()</signal>
+   <receiver>MainWindow</receiver>
+   <slot>close()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>-1</x>
+     <y>-1</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>366</x>
+     <y>201</y>
+    </hint>
+   </hints>
+  </connection>
+ </connections>
 </ui>

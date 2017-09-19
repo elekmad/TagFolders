@@ -48,8 +48,7 @@ void MainWindow::SetupTagFolder(QString &path)
     TagFolder_setup_folder(folder, path.toLocal8Bit().data());
     reload_file_list();
     reload_tags_list();
-    QLabel *label = this->findChild<QLabel*>("DirName");
-    label->setText(path);
+    this->setWindowTitle(path);
 }
 
 void MainWindow::reload_file_list(void)
@@ -452,14 +451,6 @@ Tag *TagUnselectButton::get_tag(void)
     return this->tag;
 }
 
-void MainWindow::on_OpenDir_released()
-{
-    QString dirname;
-    dirname = QFileDialog::getExistingDirectory(this, tr("Ouvrir le dossier"));
-    qInfo() << dirname;
-    SetupTagFolder(dirname);
-}
-
 void MainWindow::on_treeWidget_itemDoubleClicked(QTreeWidgetItem *i, int column)
 {
     TagSelectItem *item = (TagSelectItem*)i;
@@ -473,8 +464,15 @@ void MainWindow::on_treeWidget_itemDoubleClicked(QTreeWidgetItem *i, int column)
         TagUnselectButton *button = new TagUnselectButton(item->get_tag(), selectedtags);
         qInfo() << "button " << button << "parent " << button->parent();
         connect(button, SIGNAL(clicked(bool)), this, SLOT(Tag_unselect_button_clicked(bool)));
-        hbox->addWidget(button);
+        hbox->addWidget(button, 1, Qt::AlignLeft);
         qInfo() << "button " << button << "parent " << button->parent() << "group " << selectedtags << "layout " << hbox;
-        hbox->addStretch(1);
     }
+}
+
+void MainWindow::on_action_Open_triggered()
+{
+    QString dirname;
+    dirname = QFileDialog::getExistingDirectory(this, tr("Ouvrir le dossier"));
+    qInfo() << dirname;
+    SetupTagFolder(dirname);
 }
