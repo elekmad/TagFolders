@@ -58,6 +58,7 @@ String *TagFolder_get_folder(TagFolder *self);
 int TagFolder_check_db_structure(TagFolder *self);
 Tag *TagFolder_list_tags(TagFolder *self);
 int TagFolder_create_tag(TagFolder *self, const char *name, TagType type);
+int TagFolder_rename_tag(TagFolder *self, const int tag_id, const char *name);
 int TagFolder_create_file_in_db(TagFolder *self, const char *name, char *db_name);
 int TagFolder_tag_a_tag(TagFolder *self, const int tag_to_tag_id, const int tag_id);
 int TagFolder_untag_a_tag(TagFolder *self, const int tag_to_untag, const int tag_id);

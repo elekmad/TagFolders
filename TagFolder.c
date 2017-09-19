@@ -532,7 +532,7 @@ int TagFolder_create_tag(TagFolder *self, const char *name, TagType type)
     {
         fprintf(stderr, "Tag %s already exist\n", name);
         TagFolder_rollback_transaction(self);
-        return 0;
+        return -1;
     }
 
     snprintf(req, 499, "insert into tag (name, type) values ('%s', %d);", name, (int)type);
@@ -546,6 +546,55 @@ int TagFolder_create_tag(TagFolder *self, const char *name, TagType type)
         return -1 ;
     }
     TagFolder_commit_transaction(self);
+    sqlite3_finalize(res);
+    return ret;
+}
+
+int TagFolder_rename_tag(TagFolder *self, const int tag_id, const char *name)
+{
+    int ret = 0;
+    sqlite3_stmt *res;
+    char req[50], *errmsg;
+    int rc, selected;
+    selected = (TagFolder_unselect_tag(self, tag_id) == -2) ? 0 : 1;
+    TagFolder_begin_transaction(self);
+    snprintf(req, 499, "select id from tag where name = '%s';", name);
+    rc = sqlite3_prepare_v2(self->db, req, strlen(req), &res, NULL);
+ 
+    if( rc )
+    {
+        fprintf(stderr, "Can't verif if tag %s already exist: %s\n", name, sqlite3_errmsg(self->db));
+        TagFolder_rollback_transaction(self);
+        if(selected)
+            TagFolder_select_tag(self, tag_id);
+        return -1 ;
+    }
+    rc = sqlite3_step(res);
+ 
+    if(rc == SQLITE_ROW)
+    {
+        fprintf(stderr, "Tag %s already exist\n", name);
+        TagFolder_rollback_transaction(self);
+        if(selected)
+            TagFolder_select_tag(self, tag_id);
+        return -1;
+    }
+
+    snprintf(req, 499, "update tag set name = '%s' where id = %d;", name, tag_id);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {   
+        fprintf(stderr, "Can't rename tag %d into '%s' : %s\n", tag_id, name, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        if(selected)
+            TagFolder_select_tag(self, tag_id);
+        return -1 ;
+    }
+    TagFolder_commit_transaction(self);
+    if(selected)
+        TagFolder_select_tag(self, tag_id);
     sqlite3_finalize(res);
     return ret;
 }
@@ -845,6 +894,8 @@ int TagFolder_unselect_tag(TagFolder *self, const int tag_id)
                 Tag_set_next(cur_tag, NULL);
                 Tag_free(cur_tag);
             }
+            else//Tag was not selected
+                ret = -2;
             break;
         //Unselect an exclude tag means add it into current excludes list
         case TagTypeExclude :
@@ -857,6 +908,8 @@ int TagFolder_unselect_tag(TagFolder *self, const int tag_id)
                 cur_tag = Tag_new(tag, tag_id, type);
                 TagFolder_set_current_exclude(self, cur_tag);
             }
+            else//Tag was not selected
+                ret = -2;
             break;
     }
     sqlite3_finalize(res);
