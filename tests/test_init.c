@@ -16,5 +16,12 @@ int main(int argc, char **argv)
         ret = -1;
     }
     TagFolder_finalize(&folder);
+    TagFolder_init(&folder);
+    if(TagFolder_setup_folder(&folder, "baddir") == 0)
+    {
+        fprintf(stderr, "Folder baddir should be ok for setup\n");
+        ret = -1;
+    }
+    TagFolder_finalize(&folder);
     return ret;
 }
