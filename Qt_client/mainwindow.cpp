@@ -49,6 +49,7 @@ void MainWindow::SetupTagFolder(QString &path)
     reload_file_list();
     reload_tags_list();
     this->setWindowTitle(path);
+    qSetMessagePattern("[%{type}] %{appname} (%{file}:%{line}) - %{message}");
 }
 
 void MainWindow::reload_file_list(void)
@@ -76,7 +77,7 @@ void MainWindow::reload_file_list(void)
     ui->FileList->setModel(m);
 }
 
-void MainWindow::reload_tags_list(void)
+void MainWindow::reload_tags_list(int keep_unselect_buttons)
 {
     Tag *ltags;
     ltags = TagFolder_list_tags(folder);
@@ -95,6 +96,18 @@ void MainWindow::reload_tags_list(void)
     {
         delete child->widget();
         delete child;
+    }
+
+    if(keep_unselect_buttons == 0)
+    {
+        QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
+        QPushButton *button;
+        while(hbox->count() > 0)
+        {
+            button = qobject_cast<QPushButton*>(hbox->itemAt(0)->widget());
+            hbox->removeWidget(button);
+            button->setParent(NULL);
+        }
     }
 
     QTreeWidget *tw = this->findChild<QTreeWidget*>("treeWidget");
@@ -206,18 +219,24 @@ void MainWindow::Tag_customContextMenuRequested(bool including, const QPoint &po
     else
         action = menu->addAction(tr("Ajouter un Tag exclusif"));
     connect(action, SIGNAL(triggered(bool)), this, SLOT(get_new_tag_name_window(bool)));
-    if(checkBox != NULL) // Comming from exclude checkbox list
+    if(checkBox != NULL) // Coming from exclude checkbox list
     {
         tag_name = checkBox->text();
+        tag_operation->tag_type = TagTypeExclude;
     }
     else
     {
         QTreeWidget *w = qobject_cast<QTreeWidget*>(sender());
         TagSelectItem *item = (TagSelectItem*)w->itemAt(pos);
-        tag_name = String_get_char_string(Tag_get_name(item->get_tag()));
+        Tag *tag = item->get_tag();
+        tag_name = String_get_char_string(Tag_get_name(tag));
+        tag_operation->tag_id = Tag_get_id(tag);
+        tag_operation->tag_type = TagTypeInclude;
     }
     qInfo() << tag_name;
+    tag_operation->tag_name = tag_name;
     action = menu->addAction(tr("Renommer \"") + tag_name + tr("\""));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(get_tag_new_name_window(bool)));
     action = menu->addAction(tr("Supprimer \"") + tag_name + tr("\""));
 
     menu->exec(QCursor::pos());
@@ -228,6 +247,14 @@ void MainWindow::get_new_tag_name_window(bool)
     qInfo() << "Fenetre Get Tag Name";
     tag_operation->op_type = OpTypeAdd;
     GetTagName Dialog(this);
+    Dialog.exec();
+}
+
+void MainWindow::get_tag_new_name_window(bool)
+{
+    qInfo() << "Fenetre Get Tag Name";
+    tag_operation->op_type = OpTypeRename;
+    GetTagName Dialog(this, tag_operation->tag_name);
     Dialog.exec();
 }
 
@@ -377,18 +404,52 @@ void MainWindow::do_operation_on_file()
 
 void MainWindow::do_operation_on_tag()
 {
+    int must_remove_button = 0, must_rename_button = 0, must_reload_tags = 0, must_reload_files = 0;
     switch(tag_operation->op_type)
     {
         case OpTypeDel :
             TagFolder_delete_tag(folder, tag_operation->tag_id);
             qInfo() << "Del a tag operation";
+            must_reload_files = 1;
+            must_remove_button = 1;
             break;
         case OpTypeAdd :
             TagFolder_create_tag(folder, tag_operation->tag_name.toLocal8Bit().data(), tag_operation->tag_type);
             qInfo() << "Create a tag operation";
+            must_reload_tags = 1;
+            break;
+        case OpTypeRename :
+            TagFolder_rename_tag(folder, tag_operation->tag_id, tag_operation->tag_name.toLocal8Bit().data());
+            qInfo() << "Rename a tag operation";
+            must_rename_button = 1;
             break;
     }
-    reload_tags_list();
+    if(must_remove_button || must_rename_button)
+    {
+        if(tag_operation->tag_type == TagTypeInclude)
+        {
+            int index = 0;
+            QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
+            TagUnselectButton *button = (TagUnselectButton*)qobject_cast<QPushButton*>(hbox->itemAt(index)->widget());
+            while(button != NULL && Tag_get_id(button->get_tag()) != tag_operation->tag_id)
+                button = (TagUnselectButton*)qobject_cast<QPushButton*>(hbox->itemAt(++index)->widget());
+            if(button != NULL)
+            {
+                if(must_remove_button)
+                {
+                    hbox->removeWidget(button);
+                    button->setParent(NULL);
+                }
+                else
+                    button->setText(tag_operation->tag_name);
+            }
+        }
+        reload_tags_list(1);
+    }
+    if(must_reload_tags)
+        reload_tags_list();
+    if(must_reload_files)
+        reload_file_list();
 }
 
 TagCheckBox::TagCheckBox(Tag *tag)

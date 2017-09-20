@@ -67,6 +67,7 @@ class GetTagName : public QDialog
 
 public:
     GetTagName(QWidget *parent = 0);
+    GetTagName(QWidget *parent, QString &tag_name);
 
 private:
     QLabel *label;

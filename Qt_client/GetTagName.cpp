@@ -73,5 +73,28 @@ GetTagName::GetTagName(QWidget *parent)
 
     setLayout(mainLayout);
 
-    setWindowTitle(tr("Choisir un Tag"));
+    setWindowTitle(tr("Créer un nouveau Tag"));
+}
+
+GetTagName::GetTagName(QWidget *parent, QString &tag_name)
+    : QDialog(parent)
+{
+    label = new QLabel(tr("Choisissez un nouveau nom de Tag"));
+    name = new QLineEdit;
+    valider = new QPushButton(tr("&Valider"));
+    valider->setDefault(true);
+
+    connect(name, SIGNAL(textChanged(QString)), parent, SLOT(set_tag_name(QString)));
+    connect(valider, SIGNAL(released()), parent, SLOT(do_operation_on_tag()));
+    connect(valider, SIGNAL(released()), this, SLOT(close()));
+
+    QGridLayout *mainLayout = new QGridLayout;
+    mainLayout->setSizeConstraint(QLayout::SetFixedSize);
+    mainLayout->addWidget(label);
+    mainLayout->addWidget(name);
+    mainLayout->addWidget(valider);
+
+    setLayout(mainLayout);
+
+    setWindowTitle(tr("Renommer le Tag ") + tag_name);
 }

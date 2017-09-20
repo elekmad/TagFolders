@@ -17,6 +17,7 @@ enum OperationType
 {
     OpTypeDel,
     OpTypeAdd,
+    OpTypeRename,
 };
 typedef enum OperationType OperationType;
 
@@ -50,7 +51,7 @@ public:
     explicit MainWindow(QWidget *parent = 0);
     ~MainWindow();
     void reload_file_list(void);
-    void reload_tags_list(void);
+    void reload_tags_list(int keep_unselect_buttons = 0);
 
 private slots:
 
@@ -60,6 +61,7 @@ private slots:
     void Tag_customContextMenuRequested(bool including, const QPoint &pos);
     void do_operation_on_file_window(bool);
     void get_new_tag_name_window(bool);
+    void get_tag_new_name_window(bool);
     void open_file(bool b = true);
     void import_file(bool);
     void delete_file(bool);
