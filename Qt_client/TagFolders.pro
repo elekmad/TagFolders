@@ -14,16 +14,16 @@ TEMPLATE = app
 
 SOURCES += main.cpp\
         mainwindow.cpp \
-    GetTagName.cpp \
     treemodel.cpp \
-    treeitem.cpp
+    treeitem.cpp \
+    GetName.cpp
 
 HEADERS  += mainwindow.h \
-    GetTagName.h \
     treemodel.h \
     treeitem.h \
     ../TagFolder.h \
-    ../String/src/string_project/String.h
+    ../String/src/string_project/String.h \
+    GetName.h
 
 INCLUDEPATH += ../ \
  ../String/src/string_project/

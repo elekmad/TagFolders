@@ -13,13 +13,23 @@ extern "C"
 #include <TagFolder.h>
 }
 
-enum OperationType
+enum TagOperationType
 {
-    OpTypeDel,
-    OpTypeAdd,
-    OpTypeRename,
+    TagOpTypeDel,
+    TagOpTypeAdd,
+    TagOpTypeRename,
 };
-typedef enum OperationType OperationType;
+typedef enum TagOperationType TagOperationType;
+
+enum FileOperationType
+{
+    FileOpTypeDel,
+    FileOpTypeAdd,
+    FileOpTypeRename,
+    FileOpTypeDelTag,
+    FileOpTypeAddTag
+};
+typedef enum FileOperationType FileOperationType;
 
 namespace Ui {
 class MainWindow;
@@ -31,7 +41,7 @@ public :
     int tag_id;
     QString file_name;//For creations
     int file_id;
-    bool add_or_del;
+    FileOperationType op_type;
 };
 
 class TagOperation
@@ -39,7 +49,7 @@ class TagOperation
 public :
     QString tag_name;//For creations
     int tag_id;
-    OperationType op_type;
+    TagOperationType op_type;
     TagType tag_type;
 };
 
@@ -62,6 +72,7 @@ private slots:
     void do_operation_on_file_window(bool);
     void get_new_tag_name_window(bool);
     void get_tag_new_name_window(bool);
+    void get_file_new_name_window(bool);
     void open_file(bool b = true);
     void import_file(bool);
     void delete_file(bool);
@@ -77,7 +88,8 @@ public slots:
     void Tag_checkBox_clicked(bool checked);
     void Tag_unselect_button_clicked(bool clicked);
     void do_operation_on_file();
-    void do_operation_on_tag();
+    void set_file_name(const QString &name);
+    void do_operation_on_tag(bool b=true);
     void set_tag_name(const QString &name);
 
 private:

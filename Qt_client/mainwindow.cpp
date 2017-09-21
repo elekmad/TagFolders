@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "GetTagName.h"
+#include "GetName.h"
 #include <qwidget.h>
 #include <qlayout.h>
 #include <qlogging.h>
@@ -228,16 +228,23 @@ void MainWindow::Tag_customContextMenuRequested(bool including, const QPoint &po
     {
         QTreeWidget *w = qobject_cast<QTreeWidget*>(sender());
         TagSelectItem *item = (TagSelectItem*)w->itemAt(pos);
-        Tag *tag = item->get_tag();
-        tag_name = String_get_char_string(Tag_get_name(tag));
-        tag_operation->tag_id = Tag_get_id(tag);
-        tag_operation->tag_type = TagTypeInclude;
+        if(item != NULL)//Else rigth click outside item, no tag selected.
+        {
+            Tag *tag = item->get_tag();
+            tag_name = String_get_char_string(Tag_get_name(tag));
+            tag_operation->tag_id = Tag_get_id(tag);
+            tag_operation->tag_type = TagTypeInclude;
+        }
     }
-    qInfo() << tag_name;
-    tag_operation->tag_name = tag_name;
-    action = menu->addAction(tr("Renommer \"") + tag_name + tr("\""));
-    connect(action, SIGNAL(triggered(bool)), this, SLOT(get_tag_new_name_window(bool)));
-    action = menu->addAction(tr("Supprimer \"") + tag_name + tr("\""));
+    if(tag_name.isEmpty() == false)
+    {
+        qInfo() << tag_name;
+        tag_operation->tag_name = tag_name;
+        action = menu->addAction(tr("Renommer \"") + tag_name + tr("\""));
+        connect(action, SIGNAL(triggered(bool)), this, SLOT(get_tag_new_name_window(bool)));
+        action = menu->addAction(tr("Supprimer \"") + tag_name + tr("\""));
+        connect(action, SIGNAL(triggered(bool)), this, SLOT(do_operation_on_tag(bool)));
+    }
 
     menu->exec(QCursor::pos());
 }
@@ -245,16 +252,24 @@ void MainWindow::Tag_customContextMenuRequested(bool including, const QPoint &po
 void MainWindow::get_new_tag_name_window(bool)
 {
     qInfo() << "Fenetre Get Tag Name";
-    tag_operation->op_type = OpTypeAdd;
+    tag_operation->op_type = TagOpTypeAdd;
     GetTagName Dialog(this);
     Dialog.exec();
 }
 
 void MainWindow::get_tag_new_name_window(bool)
 {
-    qInfo() << "Fenetre Get Tag Name";
-    tag_operation->op_type = OpTypeRename;
+    qInfo() << "Fenetre Get Tag New Name";
+    tag_operation->op_type = TagOpTypeRename;
     GetTagName Dialog(this, tag_operation->tag_name);
+    Dialog.exec();
+}
+
+void MainWindow::get_file_new_name_window(bool)
+{
+    qInfo() << "Fenetre Get File New Name";
+    file_operation->op_type = FileOpTypeRename;
+    GetFileName Dialog(this, file_operation->file_name);
     Dialog.exec();
 }
 
@@ -317,6 +332,12 @@ void MainWindow::set_tag_name(const QString &name)
     tag_operation->tag_name = name;
 }
 
+void MainWindow::set_file_name(const QString &name)
+{
+    qInfo() << "set file name" << name;
+    file_operation->file_name = name;
+}
+
 void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
 {
     Q_UNUSED(pos);
@@ -352,6 +373,8 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
                 action->setChecked(true);
             ptr = Tag_get_next(ptr);
         }
+        action = menu->addAction(tr("Renommer le fichier"));
+        connect(action, SIGNAL(triggered(bool)), this, SLOT(get_file_new_name_window(bool)));
         action = menu->addAction(tr("Supprimer le fichier"));
         connect(action, SIGNAL(triggered(bool)), this, SLOT(delete_file(bool)));
     }
@@ -383,42 +406,55 @@ void MainWindow::do_operation_on_file_window(bool add_or_del)
     else
         qInfo() << "Retirer un tag de : " << file_selected;
 
-    file_operation->add_or_del = add_or_del;
+    if(add_or_del)
+        file_operation->op_type = FileOpTypeAddTag;
+    else
+        file_operation->op_type = FileOpTypeDelTag;
     file_operation->tag_id = qobject_cast<QAction*>(sender())->data().toInt();
     do_operation_on_file();
 }
 
 void MainWindow::do_operation_on_file()
 {
-    if(file_operation->add_or_del == true)
+    switch(file_operation->op_type)
     {
-        TagFolder_tag_a_file(folder, file_operation->file_id, file_operation->tag_id);
-        qInfo() << "Add tag " << file_operation->tag_id << " to file " << file_operation->file_id;
-    }
-    else
-    {
-        TagFolder_untag_a_file(folder, file_operation->file_id, file_operation->tag_id);
-        qInfo() << "Del tag " << file_operation->tag_id << " from file " << file_operation->file_id;
+        case FileOpTypeAddTag :
+            TagFolder_tag_a_file(folder, file_operation->file_id, file_operation->tag_id);
+            qInfo() << "Add tag " << file_operation->tag_id << " to file " << file_operation->file_id;
+            break;
+        case FileOpTypeDelTag :
+            TagFolder_untag_a_file(folder, file_operation->file_id, file_operation->tag_id);
+            qInfo() << "Del tag " << file_operation->tag_id << " from file " << file_operation->file_id;
+            break;
+        case FileOpTypeDel ://Done in delete_file
+            break;
+        case FileOpTypeAdd ://Done in import_file
+            break;
+        case FileOpTypeRename :
+            TagFolder_rename_file(folder, file_operation->file_id, file_operation->file_name.toLocal8Bit().data());
+            reload_file_list();
+            break;
     }
 }
 
-void MainWindow::do_operation_on_tag()
+void MainWindow::do_operation_on_tag(bool b)
 {
+    Q_UNUSED(b);
     int must_remove_button = 0, must_rename_button = 0, must_reload_tags = 0, must_reload_files = 0;
     switch(tag_operation->op_type)
     {
-        case OpTypeDel :
+        case TagOpTypeDel :
             TagFolder_delete_tag(folder, tag_operation->tag_id);
             qInfo() << "Del a tag operation";
             must_reload_files = 1;
             must_remove_button = 1;
             break;
-        case OpTypeAdd :
+        case TagOpTypeAdd :
             TagFolder_create_tag(folder, tag_operation->tag_name.toLocal8Bit().data(), tag_operation->tag_type);
             qInfo() << "Create a tag operation";
             must_reload_tags = 1;
             break;
-        case OpTypeRename :
+        case TagOpTypeRename :
             TagFolder_rename_tag(folder, tag_operation->tag_id, tag_operation->tag_name.toLocal8Bit().data());
             qInfo() << "Rename a tag operation";
             must_rename_button = 1;
@@ -430,9 +466,16 @@ void MainWindow::do_operation_on_tag()
         {
             int index = 0;
             QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
-            TagUnselectButton *button = (TagUnselectButton*)qobject_cast<QPushButton*>(hbox->itemAt(index)->widget());
+            QLayoutItem *i = hbox->itemAt(index);
+            TagUnselectButton *button = NULL;
+            if(i != NULL)
+                button = (TagUnselectButton*)qobject_cast<QPushButton*>(i->widget());
             while(button != NULL && Tag_get_id(button->get_tag()) != tag_operation->tag_id)
-                button = (TagUnselectButton*)qobject_cast<QPushButton*>(hbox->itemAt(++index)->widget());
+            {
+                i = hbox->itemAt(++index);
+                if(i != NULL)
+                    button = (TagUnselectButton*)qobject_cast<QPushButton*>(i->widget());
+            }
             if(button != NULL)
             {
                 if(must_remove_button)

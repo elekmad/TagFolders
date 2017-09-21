@@ -808,9 +808,13 @@ int TagFolder_select_tag(TagFolder *self, const int tag_id)
             {
                 cur_tag = Tag_new(tag, tag_id, type);
                 TagFolder_set_current_include(self, cur_tag);
+                fprintf(stderr, "Inclusing tag %d now selected.\n", tag_id);
             }
             else//We already have it
+            {
+                fprintf(stderr, "Inclusing tag %d already selected, nothing to be done.\n", tag_id);
                 ret = -2;
+            }
             break;
         //Select an exclude tag means delete it from current excludes list
         case TagTypeExclude :
@@ -830,9 +834,13 @@ int TagFolder_select_tag(TagFolder *self, const int tag_id)
                     self->current_excludes = cur_tag->next;
                 Tag_set_next(cur_tag, NULL);
                 Tag_free(cur_tag);
+                fprintf(stderr, "Exclusing tag %d now selected.\n", tag_id);
             }
             else//We already have it
+            {
+                fprintf(stderr, "Exclusing tag %d already selected, nothing to be done.\n", tag_id);
                 ret = -2;
+            }
             break;
     }
     sqlite3_finalize(res);
@@ -1125,6 +1133,29 @@ int TagFolder_delete_file(TagFolder *self, const int file_id)
     if( rc )
     {
         fprintf(stderr, "Can't delete file %d tagfile table : %s\n", file_id, errmsg);
+        sqlite3_free(errmsg);
+        sqlite3_finalize(res);
+        TagFolder_rollback_transaction(self);
+        return -1 ;
+    }
+
+    TagFolder_commit_transaction(self);
+    return ret;
+}
+
+int TagFolder_rename_file(TagFolder *self, const int file_id, const char *new_name)
+{
+    int ret = 0;
+    char req[500], *errmsg;
+    int rc;
+    sqlite3_stmt *res;
+    TagFolder_begin_transaction(self);
+
+    snprintf(req, 499, "update file set name = '%s' where id = %d;", new_name, file_id);
+    rc = sqlite3_exec(self->db, req, NULL, NULL, &errmsg);
+    if( rc )
+    {
+        fprintf(stderr, "Can't rename file %d with name '%s' : %s\n", file_id, new_name, errmsg);
         sqlite3_free(errmsg);
         sqlite3_finalize(res);
         TagFolder_rollback_transaction(self);

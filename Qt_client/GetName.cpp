@@ -51,7 +51,7 @@
 #include <QtWidgets>
 #include "mainwindow.h"
 
-#include "GetTagName.h"
+#include "GetName.h"
 
 GetTagName::GetTagName(QWidget *parent)
     : QDialog(parent)
@@ -97,4 +97,50 @@ GetTagName::GetTagName(QWidget *parent, QString &tag_name)
     setLayout(mainLayout);
 
     setWindowTitle(tr("Renommer le Tag ") + tag_name);
+}
+
+GetFileName::GetFileName(QWidget *parent)
+    : QDialog(parent)
+{
+    label = new QLabel(tr("Choisissez un nom de fichier"));
+    name = new QLineEdit;
+    valider = new QPushButton(tr("&Valider"));
+    valider->setDefault(true);
+
+    connect(name, SIGNAL(textChanged(QString)), parent, SLOT(set_file_name(QString)));
+    connect(valider, SIGNAL(released()), parent, SLOT(do_operation_on_file()));
+    connect(valider, SIGNAL(released()), this, SLOT(close()));
+
+    QGridLayout *mainLayout = new QGridLayout;
+    mainLayout->setSizeConstraint(QLayout::SetFixedSize);
+    mainLayout->addWidget(label);
+    mainLayout->addWidget(name);
+    mainLayout->addWidget(valider);
+
+    setLayout(mainLayout);
+
+    setWindowTitle(tr("Créer un nouveau fichier"));
+}
+
+GetFileName::GetFileName(QWidget *parent, QString &file_name)
+    : QDialog(parent)
+{
+    label = new QLabel(tr("Choisissez un nouveau nom de fichier"));
+    name = new QLineEdit;
+    valider = new QPushButton(tr("&Valider"));
+    valider->setDefault(true);
+
+    connect(name, SIGNAL(textChanged(QString)), parent, SLOT(set_file_name(QString)));
+    connect(valider, SIGNAL(released()), parent, SLOT(do_operation_on_file()));
+    connect(valider, SIGNAL(released()), this, SLOT(close()));
+
+    QGridLayout *mainLayout = new QGridLayout;
+    mainLayout->setSizeConstraint(QLayout::SetFixedSize);
+    mainLayout->addWidget(label);
+    mainLayout->addWidget(name);
+    mainLayout->addWidget(valider);
+
+    setLayout(mainLayout);
+
+    setWindowTitle(tr("Renommer le fichier ") + file_name);
 }

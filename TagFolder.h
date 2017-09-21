@@ -72,5 +72,6 @@ File *TagFolder_list_current_files(TagFolder *self);
 File *TagFolder_get_file_with_id(TagFolder *self, int id);
 int TagFolder_delete_tag(TagFolder *self, const int tag_id);
 int TagFolder_delete_file(TagFolder *self, const int file_id);
+int TagFolder_rename_file(TagFolder *self, const int file_id, const char *new_name);
 
 #endif

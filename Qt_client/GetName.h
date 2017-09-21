@@ -48,8 +48,8 @@
 **
 ****************************************************************************/
 
-#ifndef GetTagName_H
-#define GetTagName_H
+#ifndef GetName_H
+#define GetName_H
 
 #include <QDialog>
 extern "C"
@@ -61,6 +61,8 @@ class QLabel;
 class QPushButton;
 class QLineEdit;
 
+
+
 class GetTagName : public QDialog
 {
     Q_OBJECT
@@ -68,6 +70,20 @@ class GetTagName : public QDialog
 public:
     GetTagName(QWidget *parent = 0);
     GetTagName(QWidget *parent, QString &tag_name);
+
+private:
+    QLabel *label;
+    QLineEdit *name;
+    QPushButton *valider;
+};
+
+class GetFileName : public QDialog
+{
+    Q_OBJECT
+
+public:
+    GetFileName(QWidget *parent = 0);
+    GetFileName(QWidget *parent, QString &file_name);
 
 private:
     QLabel *label;
