@@ -20,7 +20,58 @@
 extern "C"
 {
 #include <String.h>
+#include <errno.h>
+#include <strings.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
 }
+
+#define GENERATE_PATH ".generate"
+#define CREATING_GENERATED_PERMS 0770
+
+int delete_a_dir(char *dirname, int removeitself)
+{
+    char *curdir;
+    DIR *dir;
+    struct dirent entry, *ptr_entry = &entry, *result = &entry;
+    dir = opendir(dirname);
+    if(dir == NULL)
+    {
+        qInfo() << "Error opening " << dirname << " : " << strerror(errno);
+        return -1;
+    }
+    curdir = get_current_dir_name();
+    chdir(dirname);
+    while(readdir_r(dir, ptr_entry, &result) == 0 && result != NULL)
+    {
+        if(ptr_entry->d_type == DT_DIR)
+        {
+            if(strcmp(ptr_entry->d_name, ".") != 0 && strcmp(ptr_entry->d_name, "..") != 0)
+                delete_a_dir(ptr_entry->d_name, 1);
+        }
+        else
+            unlink(ptr_entry->d_name);
+    }
+    closedir(dir);
+    chdir(curdir);
+    free(curdir);
+    if(removeitself)
+        rmdir(dirname);
+    return 0;
+}
+
+int clean_folder_content(char *dirname)
+{
+    struct stat sb;
+
+    if (stat(dirname, &sb) == 0 && S_ISDIR(sb.st_mode))
+        return delete_a_dir(dirname, 0);
+    else
+        mkdir(dirname, CREATING_GENERATED_PERMS);
+    return 0;
+}
+
 
 MainWindow::MainWindow(QWidget *parent) :
     QMainWindow(parent),
@@ -42,10 +93,16 @@ MainWindow::~MainWindow()
 
 void MainWindow::SetupTagFolder(QString &path)
 {
+    generating_folder = path;
+    if(generating_folder[generating_folder.length() - 1] != '/')
+        generating_folder += '/';
+    generating_folder += GENERATE_PATH;
+    qInfo() << "generating path = " << generating_folder;
     if(folder != NULL)
         TagFolder_free(folder);
     folder = TagFolder_new();
     TagFolder_setup_folder(folder, path.toLocal8Bit().data());
+    clean_folder_content(generating_folder.toLocal8Bit().data());
     reload_file_list();
     reload_tags_list();
     this->setWindowTitle(path);
@@ -297,13 +354,42 @@ void MainWindow::open_file(bool b)
     f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
     {
-        QString localfilename = "file://";
+        int index = 0;
+        QString path = generating_folder + "/";
+        QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
+        QLayoutItem *i = hbox->itemAt(index++);
+        TagUnselectButton *button = NULL;
+        while(i != NULL)
+        {
+            button = (TagUnselectButton*)qobject_cast<QPushButton*>(i->widget());
+            path += String_get_char_string(Tag_get_name(button->get_tag()));
+            path += "/";
+            i = hbox->itemAt(index++);
+            qInfo() << "i = " << index << " path = " << path;
+        }
+        QString opening_filename = "file://", localfilename;
         localfilename += String_get_char_string(TagFolder_get_folder(folder));
         if(localfilename.at(localfilename.length() - 1) != '/')
             localfilename += '/';
         localfilename += String_get_char_string(File_get_filename(f));
-        qInfo() << "delete file name : " << localfilename;
-        QDesktopServices::openUrl(QUrl(localfilename, QUrl::TolerantMode));
+        qInfo() << "opening file name : " << localfilename;
+
+        mkdir(path.toLocal8Bit().data(), CREATING_GENERATED_PERMS);
+        char *current_folder = get_current_dir_name(), *work_folder;
+        chdir(path.toLocal8Bit().data());
+        unlink(String_get_char_string(File_get_name(f)));
+        symlink(localfilename.toLocal8Bit().data(), String_get_char_string(File_get_name(f)));
+        work_folder = get_current_dir_name();
+        opening_filename += work_folder;
+        if(opening_filename[opening_filename.length() - 1] != '/')
+            opening_filename += '/';
+        free(work_folder);
+        opening_filename += String_get_char_string(File_get_name(f));
+
+        QDesktopServices::openUrl(QUrl(opening_filename, QUrl::TolerantMode));
+
+        chdir(current_folder);
+        free(current_folder);
     }
 }
 

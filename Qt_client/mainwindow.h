@@ -97,6 +97,7 @@ private:
     QStringListModel *file_model;
     QList<int> files_ids;
     TagFolder *folder;
+    QString generating_folder;
     FileOperation *file_operation;
     TagOperation *tag_operation;
 };
