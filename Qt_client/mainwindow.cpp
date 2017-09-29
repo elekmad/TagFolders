@@ -354,6 +354,7 @@ void MainWindow::open_file(bool b)
     f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
     {
+        //Build name from tags for the symbolic link folder.
         int index = 0;
         QString path = generating_folder + "/";
         QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
@@ -374,11 +375,20 @@ void MainWindow::open_file(bool b)
         localfilename += String_get_char_string(File_get_filename(f));
         qInfo() << "opening file name : " << localfilename;
 
+        //Create folder named with tags and where symbolic link will be created
         mkdir(path.toLocal8Bit().data(), CREATING_GENERATED_PERMS);
         char *current_folder = get_current_dir_name(), *work_folder;
+
+        //Go to folder to create symbolic link
         chdir(path.toLocal8Bit().data());
+
+        //Delete eventual old symbolic link
         unlink(String_get_char_string(File_get_name(f)));
+
+        //And then create the one we are going to use now.
         symlink(localfilename.toLocal8Bit().data(), String_get_char_string(File_get_name(f)));
+
+        //Build the complete filename of the symbolic link in order to open it.
         work_folder = get_current_dir_name();
         opening_filename += work_folder;
         if(opening_filename[opening_filename.length() - 1] != '/')
@@ -388,6 +398,7 @@ void MainWindow::open_file(bool b)
 
         QDesktopServices::openUrl(QUrl(opening_filename, QUrl::TolerantMode));
 
+        //Restore working directory.
         chdir(current_folder);
         free(current_folder);
     }
