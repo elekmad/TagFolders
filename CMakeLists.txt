@@ -7,6 +7,7 @@ include(ExternalProject)
 set(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/String")
 
 #Setup remote project libString
+option(UPDATE_REMOTE "Perform git up on remote project")
 set(DISCONNECT "1")
 if(${UPDATE_REMOTE})
     message(STATUS "Will perform git up on remote project")
