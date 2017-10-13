@@ -30,45 +30,28 @@ extern "C"
 #define GENERATE_PATH ".generate"
 #define CREATING_GENERATED_PERMS 0770
 
-int delete_a_dir(char *dirname, int removeitself)
+int check_generating_folder(QString &path)
 {
-    char *curdir;
-    DIR *dir;
-    struct dirent entry, *ptr_entry = &entry, *result = &entry;
-    dir = opendir(dirname);
-    if(dir == NULL)
-    {
-        qInfo() << "Error opening " << dirname << " : " << strerror(errno);
-        return -1;
-    }
-    curdir = get_current_dir_name();
-    chdir(dirname);
-    while(readdir_r(dir, ptr_entry, &result) == 0 && result != NULL)
-    {
-        if(ptr_entry->d_type == DT_DIR)
-        {
-            if(strcmp(ptr_entry->d_name, ".") != 0 && strcmp(ptr_entry->d_name, "..") != 0)
-                delete_a_dir(ptr_entry->d_name, 1);
-        }
-        else
-            unlink(ptr_entry->d_name);
-    }
-    closedir(dir);
-    chdir(curdir);
-    free(curdir);
-    if(removeitself)
-        rmdir(dirname);
-    return 0;
-}
-
-int clean_folder_content(char *dirname)
-{
+    QString generating_folder;
+    generating_folder = path;
+    if(generating_folder[generating_folder.length() - 1] != '/')
+        generating_folder += '/';
+    generating_folder += GENERATE_PATH;
+    qInfo() << "generating path = " << generating_folder;
     struct stat sb;
 
-    if (stat(dirname, &sb) == 0 && S_ISDIR(sb.st_mode))
-        return delete_a_dir(dirname, 0);
-    else
-        mkdir(dirname, CREATING_GENERATED_PERMS);
+    if (stat(generating_folder.toLocal8Bit().data(), &sb) != 0 || !S_ISDIR(sb.st_mode))
+    {
+        char *cur_dir;
+        QString tmpdirname = "/dev/shm/";
+        tmpdirname += GENERATE_PATH;
+        mkdir(tmpdirname.toLocal8Bit().data(), CREATING_GENERATED_PERMS);
+        cur_dir = get_current_dir_name();
+        chdir(path.toLocal8Bit().data());
+        symlink(tmpdirname.toLocal8Bit().data(), GENERATE_PATH);
+        chdir(cur_dir);
+        free(cur_dir);
+    }
     return 0;
 }
 
@@ -93,16 +76,11 @@ MainWindow::~MainWindow()
 
 void MainWindow::SetupTagFolder(QString &path)
 {
-    generating_folder = path;
-    if(generating_folder[generating_folder.length() - 1] != '/')
-        generating_folder += '/';
-    generating_folder += GENERATE_PATH;
-    qInfo() << "generating path = " << generating_folder;
     if(folder != NULL)
         TagFolder_free(folder);
     folder = TagFolder_new();
     TagFolder_setup_folder(folder, path.toLocal8Bit().data());
-    clean_folder_content(generating_folder.toLocal8Bit().data());
+    check_generating_folder(path);
     reload_file_list();
     reload_tags_list();
     this->setWindowTitle(path);
