@@ -77,6 +77,8 @@ private slots:
     void import_file(bool);
     void delete_file(bool);
     void SetupTagFolder(QString &path);
+    int check_generating_folder(QString &path);
+
 
     void on_treeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column);
 

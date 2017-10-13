@@ -30,9 +30,8 @@ extern "C"
 #define GENERATE_PATH ".generate"
 #define CREATING_GENERATED_PERMS 0770
 
-int check_generating_folder(QString &path)
+int MainWindow::check_generating_folder(QString &path)
 {
-    QString generating_folder;
     generating_folder = path;
     if(generating_folder[generating_folder.length() - 1] != '/')
         generating_folder += '/';
@@ -358,6 +357,7 @@ void MainWindow::open_file(bool b)
         char *current_folder = get_current_dir_name(), *work_folder;
 
         //Go to folder to create symbolic link
+        qInfo() << "go to dir : " << path;
         chdir(path.toLocal8Bit().data());
 
         //Delete eventual old symbolic link
