@@ -73,7 +73,9 @@ private slots:
     void get_new_tag_name_window(bool);
     void get_tag_new_name_window(bool);
     void get_file_new_name_window(bool);
+    void create_folder_from_tags(QString &path);
     void open_file(bool b = true);
+    void open_folder_created_by_tags(bool b);
     void import_file(bool);
     void delete_file(bool);
     void SetupTagFolder(QString &path);

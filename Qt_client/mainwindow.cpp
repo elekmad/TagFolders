@@ -248,6 +248,8 @@ void MainWindow::Tag_customContextMenuRequested(bool including, const QPoint &po
     QMenu *menu = new QMenu(w_sender);
     QAction *action;
     QString tag_name;
+    action = menu->addAction(tr("Ouvrir le dossier équivalent"));
+    connect(action, SIGNAL(triggered(bool)), this, SLOT(open_folder_created_by_tags(bool)));
     if(including)
         action = menu->addAction(tr("Ajouter un Tag inclusif"));
     else
@@ -323,6 +325,28 @@ void MainWindow::import_file(bool)
     reload_file_list();
 }
 
+void MainWindow::create_folder_from_tags(QString &path)
+{
+    //Build name from tags for the symbolic link folder.
+    int index = 0;
+    path = generating_folder + "/";
+    QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
+    QLayoutItem *i = hbox->itemAt(index++);
+    TagUnselectButton *button = NULL;
+    while(i != NULL)
+    {
+        button = (TagUnselectButton*)qobject_cast<QPushButton*>(i->widget());
+        path += String_get_char_string(Tag_get_name(button->get_tag()));
+        path += "/";
+        i = hbox->itemAt(index++);
+        qInfo() << "i = " << index << " path = " << path;
+
+        //Create folder named with tags and where symbolic link will be created
+        if(mkdir(path.toLocal8Bit().data(), CREATING_GENERATED_PERMS) == -1)
+            qInfo() << "Error during mkdir : " << strerror(errno);
+    }
+}
+
 void MainWindow::open_file(bool b)
 {
     File *f;
@@ -331,20 +355,8 @@ void MainWindow::open_file(bool b)
     f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
     {
-        //Build name from tags for the symbolic link folder.
-        int index = 0;
-        QString path = generating_folder + "/";
-        QHBoxLayout *hbox = findChild<QHBoxLayout*>("UnselectTagsHL");
-        QLayoutItem *i = hbox->itemAt(index++);
-        TagUnselectButton *button = NULL;
-        while(i != NULL)
-        {
-            button = (TagUnselectButton*)qobject_cast<QPushButton*>(i->widget());
-            path += String_get_char_string(Tag_get_name(button->get_tag()));
-            path += "/";
-            i = hbox->itemAt(index++);
-            qInfo() << "i = " << index << " path = " << path;
-        }
+        QString path;
+        create_folder_from_tags(path);
         QString opening_filename = "file://", localfilename;
         localfilename += String_get_char_string(TagFolder_get_folder(folder));
         if(localfilename.at(localfilename.length() - 1) != '/')
@@ -352,8 +364,6 @@ void MainWindow::open_file(bool b)
         localfilename += String_get_char_string(File_get_filename(f));
         qInfo() << "opening file name : " << localfilename;
 
-        //Create folder named with tags and where symbolic link will be created
-        mkdir(path.toLocal8Bit().data(), CREATING_GENERATED_PERMS);
         char *current_folder = get_current_dir_name(), *work_folder;
 
         //Go to folder to create symbolic link
@@ -380,6 +390,16 @@ void MainWindow::open_file(bool b)
         chdir(current_folder);
         free(current_folder);
     }
+}
+
+void MainWindow::open_folder_created_by_tags(bool b)
+{
+    Q_UNUSED(b);
+    QString path;
+    create_folder_from_tags(path);
+    QString opening_dir = "file://" + path;
+
+    QDesktopServices::openUrl(QUrl(opening_dir, QUrl::TolerantMode));
 }
 
 void MainWindow::delete_file(bool)
