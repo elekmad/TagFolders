@@ -62,10 +62,12 @@ public:
     ~MainWindow();
     void reload_file_list(void);
     void reload_tags_list(int keep_unselect_buttons = 0);
+    int get_file_id_from_row_id(int);
+    void prepare_file_to_open(File *f, QString &opening_filename);
 
 private slots:
 
-    void on_FileList_customContextMenuRequested(const QPoint &pos);
+    void on_filesList_customContextMenuRequested(const QPoint &pos);
     void IncludeTag_customContextMenuRequested(const QPoint &pos);
     void ExcludeTag_customContextMenuRequested(const QPoint &pos);
     void Tag_customContextMenuRequested(bool including, const QPoint &pos);
@@ -84,7 +86,7 @@ private slots:
 
     void on_treeWidget_itemDoubleClicked(QTreeWidgetItem *item, int column);
 
-    void on_FileList_doubleClicked(const QModelIndex &index);
+    void on_filesList_doubleClicked(const QModelIndex &index);
 
     void on_action_Open_triggered();
 

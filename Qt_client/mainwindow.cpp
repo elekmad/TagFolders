@@ -15,8 +15,6 @@
 #include <QTreeWidgetItem>
 #include <qfiledialog.h>
 #include <treemodel.h>
-#include <sys/stat.h>
-#include <unistd.h>
 extern "C"
 {
 #include <String.h>
@@ -25,6 +23,7 @@ extern "C"
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <dirent.h>
+#include <unistd.h>
 }
 
 #define GENERATE_PATH ".generate"
@@ -78,6 +77,7 @@ void MainWindow::SetupTagFolder(QString &path)
     if(folder != NULL)
         TagFolder_free(folder);
     folder = TagFolder_new();
+    ui->filesList->setTagFolder(folder);
     TagFolder_setup_folder(folder, path.toLocal8Bit().data());
     check_generating_folder(path);
     reload_file_list();
@@ -108,7 +108,7 @@ void MainWindow::reload_file_list(void)
     TreeModel *m = new TreeModel(headers, datas, qobject_cast<QObject*>(this));
     if(current_files != NULL)
         File_free(current_files);
-    ui->FileList->setModel(m);
+    ui->filesList->setModel(m);
 }
 
 void MainWindow::reload_tags_list(int keep_unselect_buttons)
@@ -197,6 +197,11 @@ void MainWindow::reload_tags_list(int keep_unselect_buttons)
 
         ui->retranslateUi(this);
     }
+}
+
+int MainWindow::get_file_id_from_row_id(int row)
+{
+    return files_ids[row];
 }
 
 void MainWindow::Tag_checkBox_clicked(bool checked)
@@ -347,6 +352,43 @@ void MainWindow::create_folder_from_tags(QString &path)
     }
 }
 
+void MainWindow::prepare_file_to_open(File *f, QString &opening_filename)
+{
+    QString path;
+    create_folder_from_tags(path);
+    QString localfilename;
+    opening_filename = "file://";
+    localfilename += String_get_char_string(TagFolder_get_folder(folder));
+    if(localfilename.at(localfilename.length() - 1) != '/')
+        localfilename += '/';
+    localfilename += String_get_char_string(File_get_filename(f));
+    qInfo() << "opening file name : " << localfilename;
+
+    char *current_folder = get_current_dir_name(), *work_folder;
+
+    //Go to folder to create symbolic link
+    qInfo() << "go to dir : " << path;
+    chdir(path.toLocal8Bit().data());
+
+    //Delete eventual old symbolic link
+    unlink(String_get_char_string(File_get_name(f)));
+
+    //And then create the one we are going to use now.
+    symlink(localfilename.toLocal8Bit().data(), String_get_char_string(File_get_name(f)));
+
+    //Build the complete filename of the symbolic link in order to open it.
+    work_folder = get_current_dir_name();
+    opening_filename += work_folder;
+    if(opening_filename[opening_filename.length() - 1] != '/')
+        opening_filename += '/';
+    free(work_folder);
+    opening_filename += String_get_char_string(File_get_name(f));
+
+    //Restore working directory.
+    chdir(current_folder);
+    free(current_folder);
+}
+
 void MainWindow::open_file(bool b)
 {
     File *f;
@@ -355,40 +397,9 @@ void MainWindow::open_file(bool b)
     f = TagFolder_get_file_with_id(folder, file_operation->file_id);
     if(f != NULL)
     {
-        QString path;
-        create_folder_from_tags(path);
-        QString opening_filename = "file://", localfilename;
-        localfilename += String_get_char_string(TagFolder_get_folder(folder));
-        if(localfilename.at(localfilename.length() - 1) != '/')
-            localfilename += '/';
-        localfilename += String_get_char_string(File_get_filename(f));
-        qInfo() << "opening file name : " << localfilename;
-
-        char *current_folder = get_current_dir_name(), *work_folder;
-
-        //Go to folder to create symbolic link
-        qInfo() << "go to dir : " << path;
-        chdir(path.toLocal8Bit().data());
-
-        //Delete eventual old symbolic link
-        unlink(String_get_char_string(File_get_name(f)));
-
-        //And then create the one we are going to use now.
-        symlink(localfilename.toLocal8Bit().data(), String_get_char_string(File_get_name(f)));
-
-        //Build the complete filename of the symbolic link in order to open it.
-        work_folder = get_current_dir_name();
-        opening_filename += work_folder;
-        if(opening_filename[opening_filename.length() - 1] != '/')
-            opening_filename += '/';
-        free(work_folder);
-        opening_filename += String_get_char_string(File_get_name(f));
-
+        QString opening_filename;
+        prepare_file_to_open(f, opening_filename);
         QDesktopServices::openUrl(QUrl(opening_filename, QUrl::TolerantMode));
-
-        //Restore working directory.
-        chdir(current_folder);
-        free(current_folder);
     }
 }
 
@@ -433,10 +444,10 @@ void MainWindow::set_file_name(const QString &name)
     file_operation->file_name = name;
 }
 
-void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
+void MainWindow::on_filesList_customContextMenuRequested(const QPoint &pos)
 {
     Q_UNUSED(pos);
-    QTreeView *filelist = this->findChild<QTreeView*>("FileList");
+    QTreeView *filelist = this->findChild<QTreeView*>("filesList");
     QMenu *menu = new QMenu(qobject_cast<QWidget*>(filelist));
     QAction *action;
     QItemSelectionModel *selection_model = filelist->selectionModel();
@@ -478,7 +489,7 @@ void MainWindow::on_FileList_customContextMenuRequested(const QPoint &pos)
     menu->exec(QCursor::pos());
 }
 
-void MainWindow::on_FileList_doubleClicked(const QModelIndex &index)
+void MainWindow::on_filesList_doubleClicked(const QModelIndex &index)
 {
     int file_id = files_ids[index.row()];
     File *file = TagFolder_get_file_with_id(folder, file_id);
@@ -493,7 +504,7 @@ void MainWindow::on_FileList_doubleClicked(const QModelIndex &index)
 
 void MainWindow::do_operation_on_file_window(bool add_or_del)
 {
-    QTreeView *filelist = this->findChild<QTreeView*>(tr("FileList"));
+    QTreeView *filelist = this->findChild<QTreeView*>(tr("filesList"));
     filelist->selectionModel()->selectedIndexes();
     QString file_selected = filelist->selectionModel()->selectedIndexes().first().data().toString();
     if(add_or_del)

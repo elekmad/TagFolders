@@ -16,14 +16,16 @@ SOURCES += main.cpp\
         mainwindow.cpp \
     treemodel.cpp \
     treeitem.cpp \
-    GetName.cpp
+    GetName.cpp \
+    filelist.cpp
 
 HEADERS  += mainwindow.h \
     treemodel.h \
     treeitem.h \
     ../TagFolder.h \
     ../String/src/string_project/String.h \
-    GetName.h
+    GetName.h \
+    filelist.h
 
 INCLUDEPATH += ../ \
  ../String/src/string_project/
