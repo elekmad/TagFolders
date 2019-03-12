@@ -1,8 +1,8 @@
 cmake_minimum_required(VERSION 2.8)
 #Déclaration du projet
-cmake_policy(SET CMP0004 OLD)
 project(TagFolders)
 include(ExternalProject)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}")
 
 set(STRINGS "${CMAKE_CURRENT_BINARY_DIR}/String")
 
@@ -37,11 +37,12 @@ include(unittests.cmake)
 
 #Déclaration de l'exécutable
 
+find_package(SQLite3 REQUIRED)
 target_link_libraries (TagFolder "-lsqlite3")
 #include_directories("-I/usr/include/readline")
 #target_link_libraries (TagFolders "-L/usr/local/lib -lreadline")
 
-find_package(OpenSSL)
+find_package(OpenSSL REQUIRED)
 if(OPENSSL_FOUND)
     include_directories(${OPENSSL_INCLUDE_DIR})
     target_link_libraries (TagFolder ${OPENSSL_LIBRARIES})
